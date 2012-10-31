@@ -1,0 +1,10 @@
+# General cruft.
+*.pyc
+.DS_Store
+._*
+
+# Build results
+*.make-sentinel
+/bin
+/docs/_build
+/sandbox
