@@ -1,4 +1,4 @@
-# sgfs
+# sgpublish
 
 [![Test Status](https://secure.travis-ci.org/westernx/sgpublish.png)](http://travis-ci.org/westernx/sgpublish)
 
