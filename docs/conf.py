@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# sgfs documentation build configuration file, created by
+# sgpublish documentation build configuration file, created by
 # sphinx-quickstart on Wed Sep 19 09:51:46 2012.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -52,7 +52,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'sgfs'
+project = u'sgpublish'
 copyright = u'%s, Western X' % datetime.datetime.utcnow().year
 
 # The version info for the project you're documenting, acts as replacement for
@@ -175,7 +175,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'sgfsdoc'
+htmlhelp_basename = 'sgpublishdoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -194,7 +194,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'sgfs.tex', u'sgfs Documentation',
+  ('index', 'sgpublish.tex', u'sgpublish Documentation',
    u'Western X', 'manual'),
 ]
 
@@ -224,7 +224,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'sgfs', u'sgfs Documentation',
+    ('index', 'sgpublish', u'sgpublish Documentation',
      [u'Western X'], 1)
 ]
 
@@ -238,8 +238,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'sgfs', u'sgfs Documentation',
-   u'Western X', 'sgfs', 'One line description of project.',
+  ('index', 'sgpublish', u'sgpublish Documentation',
+   u'Western X', 'sgpublish', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -260,10 +260,16 @@ autodoc_default_flags = ['undoc-members']
 todo_include_todos = True
 
 intersphinx_mapping = {
-    'python': ('http://docs.python.org/release/2.6.8/', None),
+    'python': ('http://docs.python.org/2.7/', None),
 }
-for name in os.listdir('../..'):
-    html_path = os.path.abspath(os.path.join('..', '..', name, 'docs', '_build', 'html'))
-    if os.path.exists(html_path):
-        intersphinx_mapping[name.replace('_', '')] = (html_path, None)
+
+# Add all of the external docs. Use the local versions if at WesternX,
+# otherwise fall back onto the RTD version.
+for name in ('sgfs', 'sgsession'):
+    local_path = os.path.abspath(os.path.join('..', '..', name, 'docs', '_build', 'html'))
+    if os.path.exists(local_path):
+        intersphinx_mapping[name.replace('_', '')] = (local_path, None)
+    else:
+        intersphinx_mapping[name.replace('_', '')] = ('https://%s.readthedocs.org/en/latest/' % name, None)
+
 
