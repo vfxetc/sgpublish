@@ -5,10 +5,59 @@ import concurrent.futures
 
 from sgfs import SGFS
 
+from . import utils
 
-class Publish(object):
+__also_reload__ = [
+    '.utils',
+]
+
+
+class Publisher(object):
     
-    def __init__(self, link, type, code, path=None, description=None, sgfs=None):
+    """Object to assist in publishing to Shotgun.
+    
+    This object encapsulates the logic for the required two-stage creation cycle
+    of a Shotgun ``PublishEvent``.
+    
+    Publishes are grouped into logical streams, consisting of Shotgun
+    ``PublishEvent`` entities sharing the same ``link``, ``type``, and ``code``.
+    Their version numbers are automatically generated to be monotonically
+    increasing within that stream.
+    
+    This object is generally used as a context manager such that it will cleanup
+    the first stage of the commit if there is an exception::
+    
+        >>> with sgpublish.Publisher(link=task, type="maya_scene", code=name,
+        ...         ) as publisher:
+        ...     publisher.add_file(scene_file)
+        
+    :param link: The Shotgun entity to attach to.
+    :type link: :class:`python:dict` or :class:`~sgsession.entity.Entity`
+    
+    :param str type: A code for the type of publish. This is significant to the
+        user and publish handlers.
+    
+    :param str code: A name for the stream of publishes.
+    
+    :param path: The directory to create for the publish. If ``None``, this will
+        be generated via the ``"{type}_publish"`` :class:`sgfs.Template
+        <sgfs.template.Template>` found for the given ``link``.
+    :type path: str or None
+    
+    :param str description: The publish's description; can be provided via an
+        attribute before :meth:`.commit`.
+    
+    :param created_by: A Shotgun ``HumanUser`` for the publish to be attached to.
+        ``None`` will result in a guess via :func:`.guess_shotgun_user`.
+    :type created_by: :class:`~sgsession.entity.Entity`, :class:`dict`, or None
+    
+    :param sgfs: The SGFS to use. Will be pulled from the link's session if not
+        provided.
+    :type sgfs: :class:`~sgfs.sgfs.SGFS` or None
+    
+    """
+    
+    def __init__(self, link, type, code, path=None, description=None, created_by=None, sgfs=None):
         
         self.sgfs = sgfs or SGFS(session=link.session)
         
@@ -16,6 +65,7 @@ class Publish(object):
         self.type = type
         self.code = code
         self.description = description
+        self.created_by = created_by or utils.guess_shotgun_user()
         
         # First stage of the publish: create an "empty" PublishEvent.
         self._entity = self.sgfs.session.create('PublishEvent', {
@@ -25,6 +75,7 @@ class Publish(object):
             'description': str(description),
             'code': code,
             'sg_version': 0, # Signifies that this is "empty".
+            'created_by': self.created_by,
         })
         
         # Determine the version number by looking at the existing publishes.
@@ -63,17 +114,31 @@ class Publish(object):
     
     @property
     def id(self):
+        """The ID of the PublishEvent."""
         return self._entity['id']
     
     @property
     def version(self):
+        """The version of the PublishEvent."""
         return self._version
     
     @property
     def path(self):
+        """The path into which all files must be placed."""
         return self._path
     
     def add_file(self, src_path, dst_name=None):
+        """Queue a file (or folder) to be copied into the publish.
+        
+        :param str src_path: The path to copy into the publish.
+        :param dst_name: Where to copy it to.
+        :type dst_name: str or None.
+        
+        ``dst_name`` will default to the basename of the source path. ``dst_name``
+        will always be treated as relative to the :attr:`.path`, even if it
+        starts with a slash.
+        
+        """
         dst_name = dst_name or os.path.basename(src_path)
         self._files.append((src_path, dst_name))
     
@@ -98,7 +163,7 @@ class Publish(object):
                 {
                     'sg_version': self._version,
                     'sg_path': self._path,
-                    'description': self.description,
+                    'description': self.description or '',
                 },
             )
             

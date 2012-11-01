@@ -1,1 +1,1 @@
-from .publish import Publish
+from .publisher import Publisher

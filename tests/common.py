@@ -21,7 +21,7 @@ else:
 from sgsession import Session, Entity
 
 from sgfs import SGFS
-from sgpublish import Publish
+from sgpublish import Publisher
 
 
 if sys.version_info < (2, 6):
