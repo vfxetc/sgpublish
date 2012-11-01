@@ -1,7 +1,7 @@
 Publisher
 =========
 
-.. automodule:: sgpublish.publish
+.. automodule:: sgpublish.publisher
 
     .. autoclass:: Publisher
         :members:
