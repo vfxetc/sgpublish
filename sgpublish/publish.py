@@ -8,20 +8,21 @@ from sgfs import SGFS
 
 class Publish(object):
     
-    def __init__(self, link, type, code, path=None, sgfs=None):
+    def __init__(self, link, type, code, path=None, description=None, sgfs=None):
         
         self.sgfs = sgfs or SGFS(session=link.session)
         
         self.link = self.sgfs.session.merge(link)
         self.type = type
         self.code = code
-        
+        self.description = description
         
         # First stage of the publish: create an "empty" PublishEvent.
         self._entity = self.sgfs.session.create('PublishEvent', {
             'sg_link': link,
             'project': self.link.project(),
             'sg_type': type,
+            'description': str(description),
             'code': code,
             'sg_version': 0, # Signifies that this is "empty".
         })
@@ -97,6 +98,7 @@ class Publish(object):
                 {
                     'sg_version': self._version,
                     'sg_path': self._path,
+                    'description': self.description,
                 },
             )
             
