@@ -33,9 +33,9 @@ class Publish(object):
             ('sg_type', 'is', type),
             ('code', 'is', code),
             ('id', 'less_than', self._entity['id']),
-        ], ['version']):
-            if existing['version']:
-                self._version = existing['version'] + 1
+        ], ['sg_version']):
+            if existing['sg_version']:
+                self._version = existing['sg_version'] + 1
             else:
                 self._version += 1
         
@@ -43,10 +43,12 @@ class Publish(object):
         if path is not None:
             self._path = path
         else:
-            self._path = sgfs.path_from_template(link, '%s_publish' % type,
+            self._path = self.sgfs.path_from_template(link, '%s_publish' % type,
                 publish=self,
             )
-        
+        if not os.path.exists(self._path):
+            os.makedirs(self._path)
+            
         self._committed = False
         
         # Will be set into the tag.
@@ -57,6 +59,10 @@ class Publish(object):
         
         # Thumbnail to publish.
         self.thumbnail_path = None
+    
+    @property
+    def id(self):
+        return self._entity['id']
     
     @property
     def version(self):
@@ -101,9 +107,6 @@ class Publish(object):
                     self._entity['id'],
                     self.thumbnail_path,
                 )
-            
-            if not os.path.exists(self._path):
-                os.makedirs(self._path)
             
             # Copy in the new files, and lock down the writing bit.
             for src_path, dst_name in self._files:
