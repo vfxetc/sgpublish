@@ -57,7 +57,7 @@ class Publisher(object):
     
     """
     
-    def __init__(self, link, type, code, path=None, description=None, created_by=None, sgfs=None):
+    def __init__(self, link, type, code, directory=None, path=None, description=None, created_by=None, sgfs=None):
         
         self.sgfs = sgfs or SGFS(session=link.session)
         
@@ -66,6 +66,7 @@ class Publisher(object):
         self.code = code
         self.description = description
         self.created_by = created_by or utils.guess_shotgun_user()
+        self.path = path
         
         # First stage of the publish: create an "empty" PublishEvent.
         self._entity = self.sgfs.session.create('PublishEvent', {
@@ -92,15 +93,17 @@ class Publisher(object):
                 self._version += 1
         
         # Generate the publish path.
-        if path is not None:
-            self._path = path
+        if directory is not None:
+            self._directory = directory
         else:
-            self._path = self.sgfs.path_from_template(link, '%s_publish' % type,
+            self._directory = self.sgfs.path_from_template(link, '%s_publish' % type,
                 publish=self,
             )
-        if not os.path.exists(self._path):
-            os.makedirs(self._path)
-            
+        if not os.path.exists(self._directory):
+            os.makedirs(self._directory)
+        elif os.path.exists(os.path.join(self._directory, '.sgfs.yml')):
+            raise ValueError('directory is already tagged')
+        
         self._committed = False
         
         # Will be set into the tag.
@@ -123,9 +126,9 @@ class Publisher(object):
         return self._version
     
     @property
-    def path(self):
+    def directory(self):
         """The path into which all files must be placed."""
-        return self._path
+        return self._directory
     
     def add_file(self, src_path, dst_name=None):
         """Queue a file (or folder) to be copied into the publish.
@@ -162,7 +165,7 @@ class Publisher(object):
                 self._entity['id'],
                 {
                     'sg_version': self._version,
-                    'sg_path': self._path,
+                    'sg_path': self.path or self._directory,
                     'description': self.description or '',
                 },
             )
@@ -177,7 +180,7 @@ class Publisher(object):
             
             # Copy in the new files, and lock down the writing bit.
             for src_path, dst_name in self._files:
-                dst_path = os.path.join(self._path, dst_name.lstrip('/'))
+                dst_path = os.path.join(self._directory, dst_name.lstrip('/'))
                 dst_dir = os.path.dirname(dst_path)
                 if not os.path.exists(dst_dir):
                     os.makedirs(dst_dir)
@@ -188,7 +191,7 @@ class Publisher(object):
             update_future.result()
             
             # Tag the directory.
-            self.sgfs.tag_directory_with_entity(self._path, self._entity, self.metadata)
+            self.sgfs.tag_directory_with_entity(self._directory, self._entity, self.metadata)
             
             # Wait for the thumbnail.
             if thumbnail_future:

@@ -7,6 +7,7 @@ import subprocess
 import platform
 import tempfile
 import os
+import re
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
@@ -33,6 +34,7 @@ class Dialog(QtGui.QDialog):
         
         basename = os.path.basename(cmds.file(q=True, sceneName=True))
         basename = os.path.splitext(basename)[0]
+        basename = re.sub(r'_*[rv]\d+', '', basename)
         
         self._code_label = QtGui.QLabel("Publish Stream")
         self._code = QtGui.QLineEdit(basename)
@@ -125,12 +127,15 @@ class Dialog(QtGui.QDialog):
             # Save the file into the directory.
             src_path = cmds.file(q=True, sceneName=True)
             try:
-                dst_path = os.path.join(publish.path, os.path.basename(src_path))
+                dst_path = os.path.join(publish.directory, os.path.basename(src_path))
                 maya_type = 'mayaBinary' if dst_path.endswith('.mb') else 'mayaAscii'
                 cmds.file(rename=dst_path)
                 cmds.file(save=True, type=maya_type)
             finally:
                 cmds.file(rename=src_path)
+            
+            # Set the primary path.
+            publish.path = dst_path
             
             # Attach a thumbnail.
             publish.thumbnail_path = self._screenshot_path
@@ -143,7 +148,7 @@ class Dialog(QtGui.QDialog):
 
 
 __also_reload__ = [
-    '..publish',
+    '..publisher',
 ]
 
 def __before_reload__():
