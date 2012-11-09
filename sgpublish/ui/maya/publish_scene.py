@@ -16,8 +16,11 @@ from maya import cmds
 
 from sgfs import SGFS
 
-from ..publisher import Publisher
+from ...publisher import Publisher
 
+__also_reload__ = [
+    '...publisher',
+]
 
 
 class Dialog(QtGui.QDialog):
@@ -147,9 +150,6 @@ class Dialog(QtGui.QDialog):
         )
 
 
-__also_reload__ = [
-    '..publisher',
-]
 
 def __before_reload__():
     # We have to manually clean this, since we aren't totally sure it will
