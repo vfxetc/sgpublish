@@ -36,11 +36,27 @@ class Dialog(QtGui.QDialog):
         self._button.setEnabled(False)
         self._button.clicked.connect(self._on_create_reference)
         button_layout.addWidget(self._button)
+        
+        self._preview = QtGui.QLabel('preview')
+        self._preview_images = {}
+        self._picker.setPreviewWidget(self._preview)
+        self._picker.updatePreviewWidget.connect(self._on_update_preview)
     
     def _on_node_changed(self, node):
         self._node = node
         self._button.setEnabled('PublishEvent' in node.state)
     
+    def _on_update_preview(self, index):
+        node = self._model.node_from_index(index)
+        entity = node.state['PublishEvent']
+        if entity not in self._preview_images:
+            pixmap = QtGui.QPixmap()
+            from urllib import urlopen
+            pixmap.loadFromData(urlopen(entity.fetch('image')).read())
+            self._preview_images[entity] = pixmap.scaledToWidth(200, Qt.SmoothTransformation)
+        self._preview.setPixmap(self._preview_images[entity])
+        self._preview.setFixedHeight(self._preview_images[entity].height())
+        
     def _on_create_reference(self):
         publish = self._node.state['PublishEvent']
         path = publish.fetch('sg_path')
