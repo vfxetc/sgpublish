@@ -5,6 +5,7 @@ import datetime
 import concurrent.futures
 
 from sgfs import SGFS
+from sgsession import Entity
 
 from . import utils
 
@@ -61,7 +62,7 @@ class Publisher(object):
     
     def __init__(self, link, type, name, directory=None, path=None, description=None, created_by=None, sgfs=None):
         
-        self.sgfs = sgfs or SGFS(session=link.session)
+        self.sgfs = sgfs or (SGFS(session=link.session) if isinstance(link, Entity) else SGFS())
         
         self.link = self.sgfs.session.merge(link)
         self.type = str(type)
@@ -71,7 +72,7 @@ class Publisher(object):
         self.path = path
         
         # First stage of the publish: create an "empty" PublishEvent.
-        self._entity = self.sgfs.session.create('PublishEvent', {
+        self.entity = self.sgfs.session.create('PublishEvent', {
             'sg_link': link,
             'project': self.link.project(),
             'sg_type': self.type,
@@ -88,7 +89,7 @@ class Publisher(object):
             ('sg_link', 'is', self.link),
             ('sg_type', 'is', self.type),
             ('code', 'is', self.name),
-            ('id', 'less_than', self._entity['id']),
+            ('id', 'less_than', self.entity['id']),
         ], ['sg_version', 'created_at']):
             if existing['sg_version']:
                 self._version = existing['sg_version'] + 1
@@ -122,7 +123,7 @@ class Publisher(object):
     @property
     def id(self):
         """The ID of the PublishEvent."""
-        return self._entity['id']
+        return self.entity['id']
     
     @property
     def version(self):
@@ -166,7 +167,7 @@ class Publisher(object):
             # Start the second stage of the publish.
             update_future = executor.submit(self.sgfs.session.update,
                 'PublishEvent',
-                self._entity['id'],
+                self.entity['id'],
                 {
                     'sg_version': self._version,
                     'sg_path': self.path or self._directory,
@@ -178,7 +179,7 @@ class Publisher(object):
             if self.thumbnail_path:
                 thumbnail_future = executor.submit(self.sgfs.session.upload_thumbnail,
                     'PublishEvent',
-                    self._entity['id'],
+                    self.entity['id'],
                     self.thumbnail_path,
                 )
                 thumbnail_name = '.sgpublish.thumbnail' + os.path.splitext(self.thumbnail_path)[1]
@@ -200,7 +201,7 @@ class Publisher(object):
                 our_metadata['thumbnail'] = thumbnail_name
             full_metadata = dict(self.metadata)
             full_metadata['sgpublish'] = our_metadata
-            self.sgfs.tag_directory_with_entity(self._directory, self._entity, full_metadata)
+            self.sgfs.tag_directory_with_entity(self._directory, self.entity, full_metadata)
             
             # Set permissions. I would like to own it by root, but we need root
             # to do that. Oh well...
@@ -229,7 +230,7 @@ class Publisher(object):
         return self
     
     def _delete(self):
-        id_ = self._entity.pop('id', None)
+        id_ = self.entity.pop('id', None)
         if id_:
             self.sgfs.session.delete('PublishEvent', id_)
     
