@@ -1,5 +1,6 @@
 import os
 from subprocess import check_call
+import datetime
 
 import concurrent.futures
 
@@ -81,15 +82,17 @@ class Publisher(object):
         
         # Determine the version number by looking at the existing publishes.
         self._version = 1
+        self._parent = None
         for existing in self.sgfs.session.find('PublishEvent', [
             ('sg_link', 'is', link),
             ('sg_type', 'is', type),
             ('code', 'is', code),
             ('id', 'less_than', self._entity['id']),
-        ], ['sg_version']):
+        ], ['sg_version', 'created_at']):
             if existing['sg_version']:
                 self._version = existing['sg_version'] + 1
-            else:
+                self._parent = existing
+            else: #elif existing['created_at'] > datetime.datetime.utcnow() - datetime.timedelta(seconds=30):
                 self._version += 1
         
         # Generate the publish path.
@@ -177,23 +180,33 @@ class Publisher(object):
                     self._entity['id'],
                     self.thumbnail_path,
                 )
+                thumbnail_name = '.sgpublish.thumbnail' + os.path.splitext(self.thumbnail_path)[1]
+                self.add_file(self.thumbnail_path, thumbnail_name)
             
-            # Copy in the new files, and lock down the writing bit.
+            # Copy in the new files.
             for src_path, dst_name in self._files:
                 dst_path = os.path.join(self._directory, dst_name.lstrip('/'))
                 dst_dir = os.path.dirname(dst_path)
                 if not os.path.exists(dst_dir):
                     os.makedirs(dst_dir)
                 check_call(['cp', '-rp', src_path, dst_path])
-                check_call(['chmod', '-R', 'a-w', dst_path])
-            
-            # Wait for the Shotgun update.
-            update_future.result()
             
             # Tag the directory.
-            self.sgfs.tag_directory_with_entity(self._directory, self._entity, self.metadata)
+            our_metadata = {}
+            if self._parent:
+                out_metadata['parent'] = self._parent.minimal
+            if self.thumbnail_path:
+                our_metadata['thumbnail'] = thumbnail_name
+            full_metadata = dict(self.metadata)
+            full_metadata['sgpublish'] = our_metadata
+            self.sgfs.tag_directory_with_entity(self._directory, self._entity, full_metadata)
             
-            # Wait for the thumbnail.
+            # Set permissions. I would like to own it by root, but we need root
+            # to do that. Oh well...
+            check_call(['chmod', '-R', 'a=rX', self._directory])
+            
+            # Wait for the Shotgun updates.
+            update_future.result()
             if thumbnail_future:
                 thumbnail_future.result()
         
