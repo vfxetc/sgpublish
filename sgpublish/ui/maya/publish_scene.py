@@ -8,6 +8,7 @@ import platform
 import tempfile
 import os
 import re
+import glob
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -67,12 +68,14 @@ class Dialog(QtGui.QDialog):
         
         basename = os.path.basename(cmds.file(q=True, sceneName=True))
         basename = os.path.splitext(basename)[0]
-        basename = re.sub(r'_*[rv]\d+', '', basename)
+        self._basename = re.sub(r'_*[rv]\d+', '', basename)
         
         self._name_box = VBox(QtGui.QLabel('Task and Name of publish stream:'))
         self.layout().addLayout(self._name_box)
         combo_layout = QtGui.QHBoxLayout()
         self._name_box.addLayout(combo_layout)
+        name_layout = QtGui.QHBoxLayout()
+        self._name_box.addLayout(name_layout)
         
         self._task_combo = ComboBox()
         self._task_combo.addItem('Loading...', {'loading': True})
@@ -83,9 +86,13 @@ class Dialog(QtGui.QDialog):
         self._name_combo.addItem('Create new stream...', {'new': True})
         self._name_combo.currentIndexChanged.connect(self._name_changed)
         combo_layout.addWidget(self._name_combo)
-        self._name_field = QtGui.QLineEdit(basename)
-        self._name_field.hide()
-        self._name_box.addWidget(self._name_field)
+        self._name_field = QtGui.QLineEdit(self._basename)
+        self._name_field.setEnabled(False)
+        name_layout.addWidget(self._name_field)
+        self._version_spinbox = QtGui.QSpinBox()
+        self._version_spinbox.setMinimum(1)
+        self._version_spinbox.setMaximum(9999)
+        name_layout.addWidget(self._version_spinbox)
         
         future = ThreadPoolExecutor(1).submit(self._populate_name_box)
         
@@ -162,7 +169,7 @@ class Dialog(QtGui.QDialog):
             self._task_combo.setCurrentIndex(select[0])
             for i in xrange(self._name_combo.count()):
                 data = self._name_combo.itemData(i)
-                if data.get('name') == select[1]:
+                if data and data.get('name') == select[1]:
                     self._name_combo.setCurrentIndex(i)
                     break
     
@@ -175,7 +182,7 @@ class Dialog(QtGui.QDialog):
         data = self._task_combo.currentData() or {}
         
         for name, version in sorted(data.get('publishes', {}).iteritems()):
-            self._name_combo.addItem('%s (v%04d)' % (name, version), {'name': name})
+            self._name_combo.addItem('%s (v%04d)' % (name, version), {'name': name, 'version': version})
         self._name_combo.addItem('Create New Stream...', {'new': True})
         if was_new:
             self._name_combo.setCurrentIndex(self._name_combo.count() - 1)
@@ -186,7 +193,10 @@ class Dialog(QtGui.QDialog):
         data = self._name_combo.itemData(index)
         if not data:
             return
-        self._name_field.setVisible('new' in data)
+        self._name_field.setEnabled('new' in data)
+        self._name_field.setText(data.get('name', self._basename))
+        self._version_spinbox.setMinimum(data.get('version', 0) + 1)
+        self._version_spinbox.setValue(data.get('version', 0) + 1)
         
     def take_full_screenshot(self):
         # Playblast the first screenshot.
@@ -241,7 +251,7 @@ class Dialog(QtGui.QDialog):
             res = QtGui.QMessageBox.warning(self,
                 "Unsaved Changes",
                 "Would you like to save your changes before publishing this file? The publish will have the changes either way.",
-                QtGui.QMessageBox.Save | QtGui.QMessageBox.Discard | QtGui.QMessageBox.Cancel,
+                QtGui.QMessageBox.Save | QtGui.QMessageBox.No | QtGui.QMessageBox.Cancel,
                 QtGui.QMessageBox.Save
             )
             if res & QtGui.QMessageBox.Save:
@@ -293,15 +303,12 @@ class Dialog(QtGui.QDialog):
             publish.thumbnail_path = self._screenshot_path
         
         # Version-up the file.
-        basename = os.path.basename(src_path)
-        basename = os.path.splitext(basename)[0]
-        basename = re.sub(r'_*[rv]\d+', '', basename)
-        revision = 0
-        while True:
-            revision += 1
-            path = os.path.join(os.path.dirname(src_path), '%s_v%04d_r%04d%s' % (basename, publish.version + 1, revision, src_ext))
-            if not os.path.exists(path):
-                break
+        revision = 1
+        for name in os.listdir(os.path.dirname(src_path)):
+            m = re.match(r'%s_v%04d_r(\d+)' % (re.escape(self._basename), publish.version), name)
+            if m:
+                revision = max(revision, int(m.group(1)) + 1)
+        path = os.path.join(os.path.dirname(src_path), '%s_v%04d_r%04d%s' % (self._basename, publish.version, revision, src_ext))
         cmds.file(rename=path)
         cmds.file(save=True, type=maya_type)
         
