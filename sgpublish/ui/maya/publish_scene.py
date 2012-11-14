@@ -55,6 +55,9 @@ class VBox(QtGui.QVBoxLayout):
 
 class Dialog(QtGui.QDialog):
     
+    # Need a signal to communicate across threads.
+    loaded_publishes = QtCore.pyqtSignal(object, object)
+    
     def __init__(self, exceptions=None):
         super(Dialog, self).__init__()
         self._exception_list = list(exceptions or [])
@@ -94,7 +97,8 @@ class Dialog(QtGui.QDialog):
         self._version_spinbox.setMaximum(9999)
         name_layout.addWidget(self._version_spinbox)
         
-        future = ThreadPoolExecutor(1).submit(self._populate_name_box)
+        self.loaded_publishes.connect(self._populate_existing_data)
+        future = ThreadPoolExecutor(1).submit(self._fetch_existing_data)
         
         desc_box = VBox(QtGui.QLabel("Describe the changes that you made:"))
         self.layout().addLayout(desc_box)
@@ -115,33 +119,31 @@ class Dialog(QtGui.QDialog):
         button.clicked.connect(self._on_submit)
         self.layout().addLayout(VBox(button))
     
-    def _populate_name_box(self):
+    def _fetch_existing_data(self):
         try:
-            self._populate_name_box_work()
+            sgfs = SGFS()
+            workspace = cmds.workspace(query=True, rootDirectory=True)
+            print 'workspace', workspace
+            tasks = sgfs.entities_from_path(workspace)
+            if not tasks:
+                cmds.error('No entities in workspace.')
+                return
+            if any(x['type'] != 'Task' for x in tasks):
+                cmds.error('Non-Task entity in workspace.')
+                return
+            publishes = sgfs.session.find('PublishEvent', [('sg_link.Task.id', 'in') + tuple(x['id'] for x in tasks), ('sg_type', 'is', 'maya_scene')], ['code', 'sg_version'])
+            self.loaded_publishes.emit(tasks, publishes)
         except:
             traceback.print_exc()
             self._task_combo.clear()
             self._task_combo.addItem('Loading Error!', {})
             raise
         
-    def _populate_name_box_work(self):
-        
-        sgfs = SGFS()
-        workspace = cmds.workspace(query=True, rootDirectory=True)
-        tasks = sgfs.entities_from_path(workspace)
-        
-        if not tasks:
-            cmds.error('No entities in workspace.')
-            return
-        
-        if any(x['type'] != 'Task' for x in tasks):
-            cmds.error('Non-Task entity in workspace.')
-            return
+    def _populate_existing_data(self, tasks, publishes):
         
         history = cmds.fileInfo('sgpublish_id_history', query=True)
         history = set(int(x.strip()) for x in history[0].split(',')) if history else set()
         
-        publishes = sgfs.session.find('PublishEvent', [('sg_link.Task.id', 'in') + tuple(x['id'] for x in tasks), ('sg_type', 'is', 'maya_scene')], ['code', 'sg_version'])
         select = None
         
         for t_i, task in enumerate(tasks):
@@ -274,6 +276,7 @@ class Dialog(QtGui.QDialog):
             type="maya_scene",
             name=self.name(),
             description=self.description(),
+            version=self._version_spinbox.value(),
         ) as publish:
             
             # Record the full history of ids.
@@ -346,6 +349,11 @@ def run():
     global dialog
     if dialog:
         dialog.close()
+    
+    if not cmds.file(q=True, sceneName=True):
+        QtGui.QMessageBox.warning(None, 'Unsaved Scene', 'The scene must be saved once before it can be published.')
+        return
+    
     dialog = Dialog()
     dialog.show()
         
