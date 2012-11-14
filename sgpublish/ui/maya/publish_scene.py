@@ -20,9 +20,11 @@ from maya import cmds
 from sgfs import SGFS
 
 from ...publisher import Publisher
+from ... import utils
 
 __also_reload__ = [
     '...publisher',
+    '...utils',
 ]
 
 
@@ -306,12 +308,7 @@ class Dialog(QtGui.QDialog):
             publish.thumbnail_path = self._screenshot_path
         
         # Version-up the file.
-        revision = 1
-        for name in os.listdir(os.path.dirname(src_path)):
-            m = re.match(r'%s_v%04d_r(\d+)' % (re.escape(self._basename), publish.version), name)
-            if m:
-                revision = max(revision, int(m.group(1)) + 1)
-        path = os.path.join(os.path.dirname(src_path), '%s_v%04d_r%04d%s' % (self._basename, publish.version, revision, src_ext))
+        path = utils.get_next_revision_path(os.path.dirname(src_path), self._basename, src_ext, publish.version)
         cmds.file(rename=path)
         cmds.file(save=True, type=maya_type)
         

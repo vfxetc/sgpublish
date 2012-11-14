@@ -1,0 +1,13 @@
+
+-
+    entrypoint: sgpublish.actions.copy_to_work_area:run
+    title: "Publish: Copy to Work Area..."
+    rich:
+        heading: Publish
+        title: Copy to Work Area
+        icon: brick-go
+    entity_types: [PublishEvent]
+    selection_required: true
+
+
+
