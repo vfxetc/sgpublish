@@ -148,7 +148,10 @@ class Dialog(QtGui.QDialog):
                 if publish['id'] in history:
                     select = t_i, name
             
-            self._task_combo.addItem('%s - %s' % task.fetch(('step.Step.short_name', 'content')), name_to_version)
+            self._task_combo.addItem('%s - %s' % task.fetch(('step.Step.short_name', 'content')), {
+                'task': task,
+                'publishes': name_to_version,
+            })
         
         if 'loading' in self._task_combo.itemData(0):
             if self._task_combo.currentIndex() == 0:
@@ -169,7 +172,9 @@ class Dialog(QtGui.QDialog):
             return
         was_new = 'new' in data
         self._name_combo.clear()
-        for name, version in sorted((self._task_combo.currentData() or {}).iteritems()):
+        data = self._task_combo.currentData() or {}
+        
+        for name, version in sorted(data.get('publishes', {}).iteritems()):
             self._name_combo.addItem('%s (v%04d)' % (name, version), {'name': name})
         self._name_combo.addItem('Create New Stream...', {'new': True})
         if was_new:
@@ -231,14 +236,31 @@ class Dialog(QtGui.QDialog):
     
     def _on_submit(self, *args):
         
-        sgfs = SGFS()
-        entities = sgfs.entities_from_path(cmds.file(q=True, sceneName=True))
-        if not entities:
-            cmds.error('Could not find SGFS tagged entities')
-            return
+        # Make sure they want to proceed if there are changes to the file.
+        if cmds.file(q=True, modified=True):
+            res = QtGui.QMessageBox.warning(self,
+                "Unsaved Changes",
+                "Would you like to save your changes before publishing this file? The publish will have the changes either way.",
+                QtGui.QMessageBox.Save | QtGui.QMessageBox.Discard | QtGui.QMessageBox.Cancel,
+                QtGui.QMessageBox.Save
+            )
+            if res & QtGui.QMessageBox.Save:
+                cmds.file(save=True)
+            if res & QtGui.QMessageBox.Cancel:
+                return
+            
+        data = self._task_combo.currentData()
+        entity = data.get('task')
+        if not entity:
+            sgfs = SGFS()
+            entities = sgfs.entities_from_path(cmds.file(q=True, sceneName=True))
+            if not entities:
+                cmds.error('Could not find SGFS tagged entities')
+                return
+            entity = entities[0]
         
         with Publisher(
-            link=entities[0],
+            link=entity,
             type="maya_scene",
             name=self.name(),
             description=self.description(),
@@ -255,9 +277,10 @@ class Dialog(QtGui.QDialog):
             
             # Save the file into the directory.
             src_path = cmds.file(q=True, sceneName=True)
+            src_ext = os.path.splitext(src_path)[1]
             try:
                 dst_path = os.path.join(publish.directory, os.path.basename(src_path))
-                maya_type = 'mayaBinary' if dst_path.endswith('.mb') else 'mayaAscii'
+                maya_type = 'mayaBinary' if src_ext == '.mb' else 'mayaAscii'
                 cmds.file(rename=dst_path)
                 cmds.file(save=True, type=maya_type)
             finally:
@@ -269,11 +292,33 @@ class Dialog(QtGui.QDialog):
             # Attach the screenshot.
             publish.thumbnail_path = self._screenshot_path
         
+        # Version-up the file.
+        basename = os.path.basename(src_path)
+        basename = os.path.splitext(basename)[0]
+        basename = re.sub(r'_*[rv]\d+', '', basename)
+        revision = 0
+        while True:
+            revision += 1
+            path = os.path.join(os.path.dirname(src_path), '%s_v%04d_r%04d%s' % (basename, publish.version + 1, revision, src_ext))
+            if not os.path.exists(path):
+                break
+        cmds.file(rename=path)
+        cmds.file(save=True, type=maya_type)
+        
         self.close()
-        QtGui.QMessageBox.information(None,
+        
+        # Inform the user, and open the detail page if asked.
+        res = QtGui.QMessageBox.information(self,
             'Publish Created',
-            'Version %d has been created on Shotgun' % publish.version,
+            'Version %d has been created on Shotgun, and your file has been renamed to %s.' % (publish.version, os.path.basename(path)),
+            QtGui.QMessageBox.Open | QtGui.QMessageBox.Ok,
+            QtGui.QMessageBox.Ok
         )
+        if res & QtGui.QMessageBox.Open:
+            if platform.system() == 'Darwin':
+                subprocess.call(['open', publish.entity.url])
+            else:
+                subprocess.call(['xdg-open', publish.entity.url])
 
 
 
