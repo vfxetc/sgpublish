@@ -10,6 +10,7 @@ from . import utils
 
 __also_reload__ = [
     '.utils',
+    'sgfs.template',
 ]
 
 
@@ -58,14 +59,14 @@ class Publisher(object):
     
     """
     
-    def __init__(self, link, type, code, directory=None, path=None, description=None, created_by=None, sgfs=None):
+    def __init__(self, link, type, name, directory=None, path=None, description=None, created_by=None, sgfs=None):
         
         self.sgfs = sgfs or SGFS(session=link.session)
         
         self.link = self.sgfs.session.merge(link)
-        self.type = type
-        self.code = code
-        self.description = description
+        self.type = str(type)
+        self.name = str(name)
+        self.description = str(description)
         self.created_by = created_by or utils.guess_shotgun_user()
         self.path = path
         
@@ -73,9 +74,9 @@ class Publisher(object):
         self._entity = self.sgfs.session.create('PublishEvent', {
             'sg_link': link,
             'project': self.link.project(),
-            'sg_type': type,
-            'description': str(description),
-            'code': code,
+            'sg_type': self.type,
+            'description': self.description,
+            'code': self.name,
             'sg_version': 0, # Signifies that this is "empty".
             'created_by': self.created_by,
         })
@@ -84,15 +85,15 @@ class Publisher(object):
         self._version = 1
         self._parent = None
         for existing in self.sgfs.session.find('PublishEvent', [
-            ('sg_link', 'is', link),
-            ('sg_type', 'is', type),
-            ('code', 'is', code),
+            ('sg_link', 'is', self.link),
+            ('sg_type', 'is', self.type),
+            ('code', 'is', self.name),
             ('id', 'less_than', self._entity['id']),
         ], ['sg_version', 'created_at']):
             if existing['sg_version']:
                 self._version = existing['sg_version'] + 1
                 self._parent = existing
-            else: #elif existing['created_at'] > datetime.datetime.utcnow() - datetime.timedelta(seconds=30):
+            else:
                 self._version += 1
         
         # Generate the publish path.
@@ -194,7 +195,7 @@ class Publisher(object):
             # Tag the directory.
             our_metadata = {}
             if self._parent:
-                out_metadata['parent'] = self._parent.minimal
+                our_metadata['parent'] = self._parent.minimal
             if self.thumbnail_path:
                 our_metadata['thumbnail'] = thumbnail_name
             full_metadata = dict(self.metadata)

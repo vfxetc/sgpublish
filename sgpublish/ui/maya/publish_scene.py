@@ -80,7 +80,7 @@ class Dialog(QtGui.QDialog):
         self._name_field.hide()
         self._name_box.addWidget(self._name_field)
         
-        ThreadPoolExecutor(1).submit(self._populate_name_box).result()
+        ThreadPoolExecutor(1).submit(self._populate_name_box)
         
         desc_box = VBox(QtGui.QLabel("Describe the changes that you made:"))
         self.layout().addLayout(desc_box)
@@ -184,13 +184,18 @@ class Dialog(QtGui.QDialog):
         with Publisher(
             link=entities[0],
             type="maya_scene",
-            code=self.name(),
+            name=self.name(),
             description=self.description(),
         ) as publish:
             
-            # Tag it with the ID.
-            # TODO: maintain the old ones.
-            cmds.fileInfo('sgpublish_id', str(publish.id))
+            # Record the full history of ids.
+            history = cmds.fileInfo('sgpublish_id_history', q=True)
+            history = [int(x.strip()) for x in history[0].split(',')] if history else []
+            history.append(publish.id)
+            cmds.fileInfo('sgpublish_id_history', ','.join(str(x) for x in history))
+            
+            # Record the name that this is submitted under.
+            cmds.fileInfo('sgpublish_name', self.name())
             
             # Save the file into the directory.
             src_path = cmds.file(q=True, sceneName=True)
@@ -205,7 +210,7 @@ class Dialog(QtGui.QDialog):
             # Set the primary path.
             publish.path = dst_path
             
-            # Attach a thumbnail.
+            # Attach the screenshot.
             publish.thumbnail_path = self._screenshot_path
         
         self.close()
