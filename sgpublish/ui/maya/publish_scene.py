@@ -62,25 +62,32 @@ class Dialog(QtGui.QDialog):
     def _setup_ui(self):
         
         self.setWindowTitle('Scene Publisher')
-        self.setMinimumSize(400, 300)
+        self.setMinimumSize(600, 400)
         self.setLayout(QtGui.QVBoxLayout())
         
         basename = os.path.basename(cmds.file(q=True, sceneName=True))
         basename = os.path.splitext(basename)[0]
         basename = re.sub(r'_*[rv]\d+', '', basename)
         
-        self._name_box = VBox(QtGui.QLabel('Name of publish stream:'))
+        self._name_box = VBox(QtGui.QLabel('Task and Name of publish stream:'))
         self.layout().addLayout(self._name_box)
+        combo_layout = QtGui.QHBoxLayout()
+        self._name_box.addLayout(combo_layout)
+        
+        self._task_combo = ComboBox()
+        self._task_combo.addItem('Loading...', {'loading': True})
+        self._task_combo.currentIndexChanged.connect(self._task_changed)
+        combo_layout.addWidget(self._task_combo)
         self._name_combo = ComboBox()
         self._name_combo.addItem('Loading...', {'loading': True})
         self._name_combo.addItem('Create new stream...', {'new': True})
         self._name_combo.currentIndexChanged.connect(self._name_changed)
-        self._name_box.addWidget(self._name_combo)
+        combo_layout.addWidget(self._name_combo)
         self._name_field = QtGui.QLineEdit(basename)
         self._name_field.hide()
         self._name_box.addWidget(self._name_field)
         
-        ThreadPoolExecutor(1).submit(self._populate_name_box)
+        future = ThreadPoolExecutor(1).submit(self._populate_name_box)
         
         desc_box = VBox(QtGui.QLabel("Describe the changes that you made:"))
         self.layout().addLayout(desc_box)
@@ -102,29 +109,78 @@ class Dialog(QtGui.QDialog):
         self.layout().addLayout(VBox(button))
     
     def _populate_name_box(self):
+        try:
+            self._populate_name_box_work()
+        except:
+            traceback.print_exc()
+            self._task_combo.clear()
+            self._task_combo.addItem('Loading Error!', {})
+            raise
+        
+    def _populate_name_box_work(self):
+        
         sgfs = SGFS()
         workspace = cmds.workspace(query=True, rootDirectory=True)
         tasks = sgfs.entities_from_path(workspace)
+        
         if not tasks:
             cmds.error('No entities in workspace.')
             return
+        
         if any(x['type'] != 'Task' for x in tasks):
             cmds.error('Non-Task entity in workspace.')
             return
+        
+        history = cmds.fileInfo('sgpublish_id_history', query=True)
+        history = set(int(x.strip()) for x in history[0].split(',')) if history else set()
+        
         publishes = sgfs.session.find('PublishEvent', [('sg_link.Task.id', 'in') + tuple(x['id'] for x in tasks), ('sg_type', 'is', 'maya_scene')], ['code', 'sg_version'])
-        name_to_version = {}
-        for publish in publishes:
-            name = publish['code']
-            name_to_version[name] = max(name_to_version.get(name, 0), publish['sg_version'])
-        for name, version in sorted(name_to_version.iteritems()):
-            self._name_combo.insertItem(self._name_combo.count() - 1, '%s (v%04d)' % (name, version + 1), {'name': name})
-        if 'loading' in self._name_combo.itemData(0):
-            if self._name_combo.currentIndex() == 0:
-                self._name_combo.setCurrentIndex(1)
-            self._name_combo.removeItem(0)
+        select = None
+        
+        for t_i, task in enumerate(tasks):
+            name_to_version = {}
+            for publish in publishes:
+                if publish['sg_link'] is not task:
+                    continue
+                name = publish['code']
+                name_to_version[name] = max(name_to_version.get(name, 0), publish['sg_version'])
+                
+                if publish['id'] in history:
+                    select = t_i, name
+            
+            self._task_combo.addItem('%s - %s' % task.fetch(('step.Step.short_name', 'content')), name_to_version)
+        
+        if 'loading' in self._task_combo.itemData(0):
+            if self._task_combo.currentIndex() == 0:
+                self._task_combo.setCurrentIndex(1)
+            self._task_combo.removeItem(0)
+        
+        if select:
+            self._task_combo.setCurrentIndex(select[0])
+            for i in xrange(self._name_combo.count()):
+                data = self._name_combo.itemData(i)
+                if data.get('name') == select[1]:
+                    self._name_combo.setCurrentIndex(i)
+                    break
     
+    def _task_changed(self, index):
+        data = self._name_combo.currentData()
+        if not data:
+            return
+        was_new = 'new' in data
+        self._name_combo.clear()
+        for name, version in sorted((self._task_combo.currentData() or {}).iteritems()):
+            self._name_combo.addItem('%s (v%04d)' % (name, version), {'name': name})
+        self._name_combo.addItem('Create New Stream...', {'new': True})
+        if was_new:
+            self._name_combo.setCurrentIndex(self._name_combo.count() - 1)
+        else:
+            self._name_combo.setCurrentIndex(0)
+        
     def _name_changed(self, index):
         data = self._name_combo.itemData(index)
+        if not data:
+            return
         self._name_field.setVisible('new' in data)
         
     def take_full_screenshot(self):
