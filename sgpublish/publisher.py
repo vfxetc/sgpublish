@@ -60,7 +60,7 @@ class Publisher(object):
     
     """
     
-    def __init__(self, link, type, name, directory=None, path=None, description=None, created_by=None, sgfs=None):
+    def __init__(self, link, type, name, version=None, directory=None, path=None, description=None, created_by=None, sgfs=None):
         
         self.sgfs = sgfs or (SGFS(session=link.session) if isinstance(link, Entity) else SGFS())
         
@@ -96,6 +96,12 @@ class Publisher(object):
                 self._parent = existing
             else:
                 self._version += 1
+        
+        if version is not None:
+            version = int(version)
+            if self._parent and version <= self._parent['sg_version']:
+                raise ValueError('requested version is too low')
+            self._version = version
         
         # Generate the publish path.
         if directory is not None:
