@@ -310,7 +310,7 @@ class Dialog(QtGui.QDialog):
         # Version-up the file.
         path = utils.get_next_revision_path(os.path.dirname(src_path), self._basename, src_ext, publish.version + 1)
         cmds.file(rename=path)
-        cmds.file(save=True, type=maya_type)
+        # cmds.file(save=True, type=maya_type)
         
         self.close()
         
@@ -347,9 +347,21 @@ def run():
     if dialog:
         dialog.close()
     
-    if not cmds.file(q=True, sceneName=True):
+    # Make sure the file was saved once.
+    # TODO: Remove this restriction eventually.
+    filename = cmds.file(q=True, sceneName=True)
+    if not filename:
         QtGui.QMessageBox.warning(None, 'Unsaved Scene', 'The scene must be saved once before it can be published.')
         return
+    
+    workspace = cmds.workspace(q=True, rootDirectory=True)
+    if not filename.startswith(workspace):
+        res = QtGui.QMessageBox.warning(None, 'Mismatched Workspace', 'This scene is not from the current workspace. Continue anyways?',
+            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
+            QtGui.QMessageBox.No
+        )
+        if res & QtGui.QMessageBox.No:
+            return
     
     dialog = Dialog()
     dialog.show()
