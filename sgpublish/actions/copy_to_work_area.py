@@ -104,8 +104,9 @@ class Dialog(QtGui.QDialog):
         
     
     def _on_copy(self):
-        subprocess.call(['cp', self._publish['sg_path'], self._namer._namer.get_path()])
-        subprocess.call(['chmod', 'a+w', self._dst_path])
+        path = self._namer._namer.get_path()
+        subprocess.call(['cp', self._publish['sg_path'], path])
+        subprocess.call(['chmod', 'a+w', path])
         exit()
 
 
