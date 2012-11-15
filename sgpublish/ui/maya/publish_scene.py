@@ -308,7 +308,7 @@ class Dialog(QtGui.QDialog):
             publish.thumbnail_path = self._screenshot_path
         
         # Version-up the file.
-        path = utils.get_next_revision_path(os.path.dirname(src_path), self._basename, src_ext, publish.version)
+        path = utils.get_next_revision_path(os.path.dirname(src_path), self._basename, src_ext, publish.version + 1)
         cmds.file(rename=path)
         cmds.file(save=True, type=maya_type)
         
