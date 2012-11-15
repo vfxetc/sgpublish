@@ -16,9 +16,10 @@ from .. import utils
 
 class Dialog(QtGui.QDialog):
     
-    def __init__(self, publish):
+    def __init__(self, publish, sgfs=None):
         super(Dialog, self).__init__()
-        
+
+        self._sgfs = sgfs or SGFS(session=publish.session)
         self._publish = publish
         self._setup_ui()
     
@@ -29,20 +30,17 @@ class Dialog(QtGui.QDialog):
         self.setMinimumWidth(400)
         self.setMinimumHeight(400)
         self.setLayout(QtGui.QVBoxLayout())
-        
+
         self._model, self._picker = picker_presets.any_task(entity=self._publish['sg_link'])
         self._picker.setMaximumHeight(400)
         self._picker.setPreviewVisible(False)
         self._picker.nodeChanged = self._on_node_changed
         self.layout().addWidget(self._picker)
-        
-        # self._preview = QtGui.QLineEdit()
-        # self._preview.setReadOnly(True)
-        # self.layout().addWidget(self._preview)
-        
-        self._namer = SceneNameWidget()
+
+        workspace = self._sgfs.path_for_entity(self._publish)
+        self._namer = SceneNameWidget(dict(workspace=workspace))
         self.layout().addWidget(self._namer)
-        
+
         button_layout = QtGui.QHBoxLayout()
         button_layout.addStretch()
         self.layout().addLayout(button_layout)
@@ -79,30 +77,34 @@ class Dialog(QtGui.QDialog):
     
     def _setup_namer(self):
 
-        basename, ext = os.path.splitext(os.path.basename(self._publish['sg_path']))
+        ext = os.path.splitext(self._publish['sg_path'])[1]
         version = self._publish['sg_version'] + 1
-        next_rev = utils.get_next_revision(
-            os.path.join(self._task_path, 'maya', 'scenes'),
+        workspace = os.path.join(self._task_path, 'maya')
+        scenes = os.path.join(workspace, 'scenes')
+        self._namer._namer = SceneName(
+            workspace=workspace,
+            directory='scenes',
+            detail=self._publish['code'],
+            version=version,
+            revision=1,
+            step_name=self._node.state['Task']['step']['short_name'],
+        )
+        self._namer._namer.version = version
+        basename = self._namer._namer.get_basename()
+        revision = utils.get_next_revision(
+            scenes,
             basename,
             ext,
             version,
         )
-        src = SceneName(filename=self._publish['sg_path'], workspace=os.path.dirname(self._publish['sg_path']))
-        print {
-            'detail': src.detail,
-            'version': version,
-            'revision': next_rev,
-        }
-        self._namer._setup_namer({
-            'detail': src.detail,
-            'version': version,
-            'revision': next_rev,
-        })
-        self._namer._setup_ui()
+        self._namer._namer.revision = revision
+        self._namer._namer.extension = ext
+        self._namer.namer_updated()
+        self._namer.update_preview()
         
     
     def _on_copy(self):
-        subprocess.call(['cp', self._publish['sg_path'], self._dst_path])
+        subprocess.call(['cp', self._publish['sg_path'], self._namer._namer.get_path()])
         subprocess.call(['chmod', 'a+w', self._dst_path])
         exit()
 
@@ -116,7 +118,7 @@ def run(entity_type, selected_ids, **kwargs):
         
     sgfs = SGFS()
     publish = sgfs.session.merge({'type': entity_type, 'id': selected_ids[0]})
-    task, type_, _, _ = publish.fetch(('sg_link', 'sg_type', 'sg_path', 'sg_version'))
+    task, type_, _, _ = publish.fetch(('sg_link', 'sg_type', 'sg_path', 'sg_version'), force=True)
     if type_ != 'maya_scene':
         QtGui.QMessageBox.critical(None, 'Unknown Publish Type', 'Cannot process publishes of type %r.' % type_)
         exit(1)
