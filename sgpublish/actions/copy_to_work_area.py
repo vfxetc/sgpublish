@@ -3,6 +3,10 @@ import subprocess
 
 from PyQt4 import QtGui
 
+# TODO: Get these out of the key_base!
+from ks.core.scene_name.core import SceneName
+from ks.core.scene_name.widget import SceneNameWidget
+
 from sgfs import SGFS
 import sgfs.ui.picker.presets as picker_presets
 import sgfs.ui.picker.utils as picker_utils
@@ -22,7 +26,7 @@ class Dialog(QtGui.QDialog):
         
         self.setWindowTitle("Select Task to Copy To")
 
-        self.setMinimumWidth(800)
+        self.setMinimumWidth(400)
         self.setMinimumHeight(400)
         self.setLayout(QtGui.QVBoxLayout())
         
@@ -32,9 +36,12 @@ class Dialog(QtGui.QDialog):
         self._picker.nodeChanged = self._on_node_changed
         self.layout().addWidget(self._picker)
         
-        self._preview = QtGui.QLineEdit()
-        self._preview.setReadOnly(True)
-        self.layout().addWidget(self._preview)
+        # self._preview = QtGui.QLineEdit()
+        # self._preview.setReadOnly(True)
+        # self.layout().addWidget(self._preview)
+        
+        self._namer = SceneNameWidget()
+        self.layout().addWidget(self._namer)
         
         button_layout = QtGui.QHBoxLayout()
         button_layout.addStretch()
@@ -62,24 +69,37 @@ class Dialog(QtGui.QDialog):
         if self._enable:
             self._task_path = self._model.sgfs.path_for_entity(node.state['Task'])
             if self._task_path is not None and os.path.exists(os.path.join(self._task_path, 'maya', 'workspace.mel')):
-                self._dst_path = self._calc_dst_path()
-                self._preview.setText(self._dst_path)
+                self._setup_namer()
             else:
                 self._enable = False
-                self._preview.setText('Maya workspace does not exist.')
         else:
-            self._preview.setText('Select a Task.')
+            pass
         
         self._copy_button.setEnabled(self._enable)
     
-    def _calc_dst_path(self):
+    def _setup_namer(self):
+
         basename, ext = os.path.splitext(os.path.basename(self._publish['sg_path']))
-        return utils.get_next_revision_path(
+        version = self._publish['sg_version'] + 1
+        next_rev = utils.get_next_revision(
             os.path.join(self._task_path, 'maya', 'scenes'),
             basename,
             ext,
-            self._publish['sg_version']
+            version,
         )
+        src = SceneName(filename=self._publish['sg_path'], workspace=os.path.dirname(self._publish['sg_path']))
+        print {
+            'detail': src.detail,
+            'version': version,
+            'revision': next_rev,
+        }
+        self._namer._setup_namer({
+            'detail': src.detail,
+            'version': version,
+            'revision': next_rev,
+        })
+        self._namer._setup_ui()
+        
     
     def _on_copy(self):
         subprocess.call(['cp', self._publish['sg_path'], self._dst_path])
@@ -109,5 +129,5 @@ def run(entity_type, selected_ids, **kwargs):
     exit(app.exec_())
 
 if __name__ == '__main__':
-    run('PublishEvent', [55])
+    run('PublishEvent', [64])
 
