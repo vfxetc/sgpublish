@@ -133,6 +133,8 @@ class PublishTab(QtGui.QWidget):
         self._version_spinbox = QtGui.QSpinBox()
         self._version_spinbox.setMinimum(1)
         self._version_spinbox.setMaximum(9999)
+        self._version_spinbox.valueChanged.connect(self._on_version_changed)
+        self._version_warning_issued = False
         
         self.layout().addLayout(hbox(
             vbox("Task", self._task_combo),
@@ -253,6 +255,20 @@ class PublishTab(QtGui.QWidget):
         self._name_field.setText(data.get('name', self._basename))
         self._version_spinbox.setMinimum(data.get('version', 0) + 1)
         self._version_spinbox.setValue(data.get('version', 0) + 1)
+    
+    def _on_version_changed(self, new_value):
+        if new_value > self._version_spinbox.minimum() and not self._version_warning_issued:
+            res = QtGui.QMessageBox.warning(None,
+                "Manual Versions?",
+                "Are you sure you want to change the version?\n"
+                "The next one has already been selected for you...",
+                QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel,
+                QtGui.QMessageBox.Cancel
+            )
+            if res & QtGui.QMessageBox.Cancel:
+                self._version_spinbox.setValue(self._version_spinbox.minimum())
+                return
+            self._version_warning_issued = True
         
     def take_full_screenshot(self):
         
