@@ -12,6 +12,7 @@ from . import utils
 __also_reload__ = [
     '.utils',
     'sgfs.template',
+    'sgfs',
 ]
 
 
@@ -107,12 +108,12 @@ class Publisher(object):
         if directory is not None:
             self._directory = directory
         else:
-            self._directory = self.sgfs.path_from_template(link, '%s_publish' % type,
+            self._directory = self.sgfs.path_from_template(link, '%s_publish' % type, dict(
                 publish=self, # For b/c.
                 publisher=self, 
                 PublishEvent=self.entity,
                 self=self.entity, # To mimick Shotgun templates.
-            )
+            ))
         if not os.path.exists(self._directory):
             os.makedirs(self._directory)
         elif os.path.exists(os.path.join(self._directory, '.sgfs.yml')):
