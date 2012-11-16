@@ -1,8 +1,8 @@
 import os
 
-from .publisher import Publisher
+from ..publisher import Publisher
 
-__also_reload__ = ['.publisher']
+__also_reload__ = ['..publisher']
 
 
 class Exporter(object):
