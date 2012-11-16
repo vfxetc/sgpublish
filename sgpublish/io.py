@@ -1,5 +1,10 @@
 import os
 
+from .publisher import Publisher
+
+__also_reload__ = ['.publisher']
+
+
 class Exporter(object):
     
     def __init__(self, workspace=None, filename_hint=None, publish_type=None, export_func=None):

@@ -16,7 +16,6 @@ import sgfs.ui.scene_name.widget as scene_name
 from sgfs import SGFS
 
 
-
 def _box(layout, *args):
     for arg in args:
         if isinstance(arg, basestring):
@@ -51,8 +50,9 @@ class ComboBox(QtGui.QComboBox):
 
 class CustomTab(QtGui.QWidget):
     
-    def __init__(self):
+    def __init__(self, exporter):
         super(CustomTab, self).__init__()
+        self._exporter = exporter
         self._setup_ui()
     
     def _setup_ui(self):
@@ -66,14 +66,19 @@ class CustomTab(QtGui.QWidget):
         
         self._browse_button.setFixedHeight(self._path_field.sizeHint().height())
         self._browse_button.setFixedWidth(self._browse_button.sizeHint().width())
+    
+    def export(self):
+        path = str(self._path_field.text())
+        self._exporter.export(os.path.dirname(path), path)
 
 
 class WorkAreaTab(scene_name.SceneNameWidget):
     
-    def __init__(self, kwargs):
+    def __init__(self, exporter, kwargs):
         kwargs.setdefault('warning', self._on_warning)
         kwargs.setdefault('error', self._on_error)
         super(WorkAreaTab, self).__init__(kwargs)
+        self._exporter = exporter
     
     def _on_warning(self, msg):
         QtGui.QMessageBox.warning(None, 'Scene Name Warning', msg)
@@ -81,6 +86,10 @@ class WorkAreaTab(scene_name.SceneNameWidget):
     def _on_error(self, msg):
         QtGui.QMessageBox.critical(None, 'Scene Name Error', msg)
         raise ValueError(msg)
+    
+    def export(self):
+        path = self.namer.get_path()
+        self._exporter.export(os.path.dirname(path), path)
 
 
 class PublishTab(QtGui.QWidget):
@@ -88,10 +97,10 @@ class PublishTab(QtGui.QWidget):
     # Need a signal to communicate across threads.
     loaded_publishes = QtCore.pyqtSignal(object, object)
     
-    def __init__(self, owner):
+    def __init__(self, exporter):
         super(PublishTab, self).__init__()
         
-        self._owner = owner
+        self._exporter = exporter
         
         basename = os.path.basename(cmds.file(q=True, sceneName=True))
         basename = os.path.splitext(basename)[0]
@@ -164,13 +173,24 @@ class PublishTab(QtGui.QWidget):
             if any(x['type'] != 'Task' for x in tasks):
                 cmds.error('Non-Task entity in workspace.')
                 return
-            publishes = sgfs.session.find('PublishEvent', [('sg_link.Task.id', 'in') + tuple(x['id'] for x in tasks), ('sg_type', 'is', 'maya_scene')], ['code', 'sg_version'])
-            self.loaded_publishes.emit(tasks, publishes)
+            publishes = sgfs.session.find(
+                'PublishEvent',
+                [
+                    ('sg_link.Task.id', 'in') + tuple(x['id'] for x in tasks),
+                    ('sg_type', 'is', self._exporter.publish_type)
+                ], [
+                    'code',
+                    'sg_version'
+                ]
+            )
+
         except:
-            traceback.print_exc()
             self._task_combo.clear()
             self._task_combo.addItem('Loading Error!', {})
             raise
+        
+        else:
+            self.loaded_publishes.emit(tasks, publishes)
         
     def _populate_existing_data(self, tasks, publishes):
         
@@ -289,7 +309,7 @@ class PublishTab(QtGui.QWidget):
         
         data = self._task_combo.currentData()
         task = data.get('task')
-        if not entity:
+        if not task:
             sgfs = SGFS()
             tasks = sgfs.entities_from_path(self._exporter.workspace, 'Task')
             if not tasks:
@@ -312,23 +332,37 @@ class Widget(QtGui.QTabWidget):
     publish_label = "Publish"
     publish_class = PublishTab
     
-    def __init__(self, exporter, custom=False, work_area=False, publish=False, work_area_kwargs=None):
+    def __init__(self, exporter):
         super(Widget, self).__init__()
-        
         self._exporter = exporter
+        self._setup_ui()
+    
+    @classmethod
+    def factory(cls, exporter, custom=False, work_area=False, publish=False, work_area_kwargs=None):
         
-        self._do_custom = custom
-        self._do_work_area = work_area
-        self._do_publish = publish
         if not (custom or work_area or publish):
             raise ValueError('must have atleast one tab')
         
-        work_area_kwargs = dict(work_area_kwargs or {})
-        work_area_kwargs.setdefault('workspace', exporter.workspace)
-        work_area_kwargs.setdefault('filename', exporter.filename_hint)
+        self = cls(exporter)
+        
+        if custom:
+            tab = self.custom_class(exporter)
+            self.addTab(tab, self.custom_label)
+        
+        if work_area:
+            work_area_kwargs = dict(work_area_kwargs or {})
+            work_area_kwargs.setdefault('workspace', exporter.workspace)
+            work_area_kwargs.setdefault('filename', exporter.filename_hint)
+            tab = self.work_area_class(exporter, work_area_kwargs)
+            self.addTab(tab, self.work_area_label)
+        
+        if publish:
+            tab = self.publish_class(exporter)
+            self.addTab(tab, self.publish_label)
+            
         self._work_area_kwargs = work_area_kwargs
         
-        self._setup_ui()
+        return self
     
     def _setup_ui(self):
         
@@ -339,22 +373,7 @@ class Widget(QtGui.QTabWidget):
             }
         ''')
         
-        if self._do_custom:
-            self._custom_tab = self.custom_class()
-            self.addTab(self._custom_tab, self.custom_label)
-        
-        if self._do_work_area:
-            self._work_area_tab = self.work_area_class(self._work_area_kwargs)
-            self.addTab(self._work_area_tab, self.work_area_label)
-        
-        if self._do_publish:
-            self._publish_tab = self.publish_class(self)
-            self.addTab(self._publish_tab, self.publish_label)
-        
-        self.setCurrentIndex(self.count() - 1)
-        
         self.currentChanged.connect(self._on_change)
-    
     
     def sizeHint(self):
         
@@ -374,6 +393,9 @@ class Widget(QtGui.QTabWidget):
     
     def _on_change(self, *args):
         self.updateGeometry()
+    
+    def export(self):
+        self.currentWidget().export()
 
 
 
