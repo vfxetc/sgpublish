@@ -10,8 +10,6 @@ import traceback
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
 
-from concurrent.futures import ThreadPoolExecutor
-
 from maya import cmds
 
 import sgfs.ui.scene_name.widget as scene_name
@@ -60,7 +58,7 @@ class CustomTab(QtGui.QWidget):
     def _setup_ui(self):
         self.setLayout(QtGui.QHBoxLayout())
         
-        self._path_field = QtGui.QLineEdit()
+        self._path_field = QtGui.QLineEdit("NOT YET IMPLEMENTED")
         
         self._browse_button = QtGui.QPushButton("Browse")
         
@@ -71,7 +69,18 @@ class CustomTab(QtGui.QWidget):
 
 
 class WorkAreaTab(scene_name.SceneNameWidget):
-    pass
+    
+    def __init__(self, kwargs):
+        kwargs.setdefault('warning', self._on_warning)
+        kwargs.setdefault('error', self._on_error)
+        super(WorkAreaTab, self).__init__(kwargs)
+    
+    def _on_warning(self, msg):
+        QtGui.QMessageBox.warning(None, 'Scene Name Warning', msg)
+    
+    def _on_error(self, msg):
+        QtGui.QMessageBox.critical(None, 'Scene Name Error', msg)
+        raise ValueError(msg)
 
 
 class PublishTab(QtGui.QWidget):
@@ -120,8 +129,11 @@ class PublishTab(QtGui.QWidget):
             vbox("Version", self._version_spinbox),
         ))
         
+        # Get publish data in the background.
         self.loaded_publishes.connect(self._populate_existing_data)
-        future = ThreadPoolExecutor(1).submit(self._fetch_existing_data)
+        self._thread = QtCore.QThread()
+        self._thread.run = self._fetch_existing_data
+        self._thread.start()
         
         self._description = QtGui.QTextEdit('')
         self._description.setMaximumHeight(100)
@@ -267,84 +279,24 @@ class PublishTab(QtGui.QWidget):
     def description(self):
         return str(self._description.toPlainText())
     
-    def _on_submit(self, *args):
+    def version(self):
+        return self._version_spinbox.value()
+    
+    def screenshot_path(self):
+        return self._screenshot_path
+    
+    def export(self):
         
-        # Make sure they want to proceed if there are changes to the file.
-        if cmds.file(q=True, modified=True):
-            res = QtGui.QMessageBox.warning(self,
-                "Unsaved Changes",
-                "Would you like to save your changes before publishing this file? The publish will have the changes either way.",
-                QtGui.QMessageBox.Save | QtGui.QMessageBox.No | QtGui.QMessageBox.Cancel,
-                QtGui.QMessageBox.Save
-            )
-            if res & QtGui.QMessageBox.Save:
-                cmds.file(save=True)
-            if res & QtGui.QMessageBox.Cancel:
-                return
-            
         data = self._task_combo.currentData()
-        entity = data.get('task')
+        task = data.get('task')
         if not entity:
             sgfs = SGFS()
-            entities = sgfs.entities_from_path(cmds.file(q=True, sceneName=True))
-            if not entities:
-                cmds.error('Could not find SGFS tagged entities')
-                return
-            entity = entities[0]
+            tasks = sgfs.entities_from_path(self._exporter.workspace, 'Task')
+            if not tasks:
+                raise ValueError('Could not find SGFS tagged entities')
+            task = tasks[0]
         
-        with Publisher(
-            link=entity,
-            type="maya_scene",
-            name=self.name(),
-            description=self.description(),
-            version=self._version_spinbox.value(),
-        ) as publish:
-            
-            # Record the full history of ids.
-            history = cmds.fileInfo('sgpublish_id_history', q=True)
-            history = [int(x.strip()) for x in history[0].split(',')] if history else []
-            history.append(publish.id)
-            cmds.fileInfo('sgpublish_id_history', ','.join(str(x) for x in history))
-            
-            # Record the name that this is submitted under.
-            cmds.fileInfo('sgpublish_name', self.name())
-            
-            # Save the file into the directory.
-            src_path = cmds.file(q=True, sceneName=True)
-            src_ext = os.path.splitext(src_path)[1]
-            try:
-                dst_path = os.path.join(publish.directory, os.path.basename(src_path))
-                maya_type = 'mayaBinary' if src_ext == '.mb' else 'mayaAscii'
-                cmds.file(rename=dst_path)
-                cmds.file(save=True, type=maya_type)
-            finally:
-                cmds.file(rename=src_path)
-            
-            # Set the primary path.
-            publish.path = dst_path
-            
-            # Attach the screenshot.
-            publish.thumbnail_path = self._screenshot_path
-        
-        # Version-up the file.
-        path = utils.get_next_revision_path(os.path.dirname(src_path), self._basename, src_ext, publish.version + 1)
-        cmds.file(rename=path)
-        # cmds.file(save=True, type=maya_type)
-        
-        self.close()
-        
-        # Inform the user, and open the detail page if asked.
-        res = QtGui.QMessageBox.information(self,
-            'Publish Created',
-            'Version %d has been created on Shotgun, and your file has been renamed to %s.' % (publish.version, os.path.basename(path)),
-            QtGui.QMessageBox.Open | QtGui.QMessageBox.Ok,
-            QtGui.QMessageBox.Ok
-        )
-        if res & QtGui.QMessageBox.Open:
-            if platform.system() == 'Darwin':
-                subprocess.call(['open', publish.entity.url])
-            else:
-                subprocess.call(['xdg-open', publish.entity.url])
+        self._exporter.publish(task, self.name(), self.description(), self.version(), self.screenshot_path())
 
 
 class Widget(QtGui.QTabWidget):
@@ -353,15 +305,29 @@ class Widget(QtGui.QTabWidget):
     beforeScreenshot = QtCore.pyqtSignal()
     afterScreenshot = QtCore.pyqtSignal()
 
-    custom_tab_label = "Custom"
-    custom_tab_class = CustomTab
-    work_area_tab_label = "Work Area"
-    work_area_tab_class = WorkAreaTab
-    publish_tab_label = "Publish"
-    publish_tab_class = PublishTab
+    custom_label = "Custom"
+    custom_class = CustomTab
+    work_area_label = "Work Area"
+    work_area_class = WorkAreaTab
+    publish_label = "Publish"
+    publish_class = PublishTab
     
-    def __init__(self):
+    def __init__(self, exporter, custom=False, work_area=False, publish=False, work_area_kwargs=None):
         super(Widget, self).__init__()
+        
+        self._exporter = exporter
+        
+        self._do_custom = custom
+        self._do_work_area = work_area
+        self._do_publish = publish
+        if not (custom or work_area or publish):
+            raise ValueError('must have atleast one tab')
+        
+        work_area_kwargs = dict(work_area_kwargs or {})
+        work_area_kwargs.setdefault('workspace', exporter.workspace)
+        work_area_kwargs.setdefault('filename', exporter.filename_hint)
+        self._work_area_kwargs = work_area_kwargs
+        
         self._setup_ui()
     
     def _setup_ui(self):
@@ -373,51 +339,22 @@ class Widget(QtGui.QTabWidget):
             }
         ''')
         
-        self._custom_tab = self.custom_tab_class()
-        self.addTab(self._custom_tab, self.custom_tab_label)
-        self._work_area_tab = self.work_area_tab_class()
-        self.addTab(self._work_area_tab, self.work_area_tab_label)
-        self._publish_tab = self.publish_tab_class(self)
-        self.addTab(self._publish_tab, self.publish_tab_label)
+        if self._do_custom:
+            self._custom_tab = self.custom_class()
+            self.addTab(self._custom_tab, self.custom_label)
         
-        self.setCurrentIndex(2)
+        if self._do_work_area:
+            self._work_area_tab = self.work_area_class(self._work_area_kwargs)
+            self.addTab(self._work_area_tab, self.work_area_label)
         
-        self.currentChanged.connect(self._on_tab_change)
+        if self._do_publish:
+            self._publish_tab = self.publish_class(self)
+            self.addTab(self._publish_tab, self.publish_label)
         
-        return
+        self.setCurrentIndex(self.count() - 1)
         
-        
-        box = QtGui.QWidget()
-        box.setLayout(QtGui.QVBoxLayout())
-        tabs.addTab(box, "Export")
-        self._scene_name = scene_name.SceneNameWidget({
-            'directory': 'scenes/camera',
-            'sub_directory': '',
-            'extension': '.ma',
-            'workspace': cmds.workspace(q=True, fullName=True) or None,
-            'filename': cmds.file(q=True, sceneName=True) or None,
-            'warning': self._warning,
-            'error': self._warning,
-        })
-        box.layout().addWidget(self._scene_name)
-        
-        
-        box = QtGui.QWidget()
-        tabs.addTab(box, "Publish")
-        box.setLayout(QtGui.QVBoxLayout())
-        label = QtGui.QLabel("NOT YET IMPLEMENTED")
-        label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        box.layout().addWidget(label)
-        
-        button_row = QtGui.QHBoxLayout()
-        button_row.addStretch()
-        self.layout().addLayout(button_row)
-        
-        self._button = button = QtGui.QPushButton("Export")
-        button.clicked.connect(self._on_export)
-        button_row.addWidget(button)
-        
-        self._populate_cameras()
+        self.currentChanged.connect(self._on_change)
+    
     
     def sizeHint(self):
         
@@ -435,100 +372,11 @@ class Widget(QtGui.QTabWidget):
     def minimumSizeHint(self):
         return self.sizeHint()
     
-    def _on_tab_change(self, *args):
+    def _on_change(self, *args):
         self.updateGeometry()
-    
-    def _on_reload(self, *args):
-        self._populate_cameras()
-    
-    def _populate_cameras(self):
-        previous = str(self._cameras.currentText())
-        selection = set(cmds.ls(sl=True, type='transform') or ())
-        self._cameras.clear()
-        for camera in cmds.ls(type="camera"):
-            transform = cmds.listRelatives(camera, parent=True)[0]
-            self._cameras.addItem(transform, (transform, camera))
-            if (previous and previous == transform) or (not previous and transform in selection):
-                self._cameras.setCurrentIndex(self._cameras.count() - 1)
-        self._update_status()
-    
-    def _on_cameras_changed(self, *args):
-        self._update_status()
-    
-    def _nodes_to_export(self):
-        
-        transform = str(self._cameras.currentText())
-        export = set(cmds.listRelatives(transform, allDescendents=True) or ())
-        
-        parents = [transform]
-        while parents:
-            parent = parents.pop(0)
-            if parent in export:
-                continue
-            export.add(parent)
-            parents.extend(cmds.listRelatives(parent, allParents=True) or ())
-        
-        return export
-        
-    def _update_status(self):
-        
-        counts = {}
-        for node in self._nodes_to_export():
-            type_ = cmds.nodeType(node)
-            counts[type_] = counts.get(type_, 0) + 1
-        
-        self._summary.setText('\n'.join('%dx %s' % (c, n) for n, c in sorted(counts.iteritems())))
-        
-    def _on_export(self, *args):
-        
-        path = self._scene_name._namer.get_path()
-        export_path = path
-        print path
-        
-        dir_name = os.path.dirname(path)
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-            
-        # If this is 2013 then export to somewhere temporary.
-        maya_version = int(mel.eval('about -version').split()[0])
-        if maya_version > 2011:
-            export_path = os.path.splitext(path)[0] + ('.%d.ma' % maya_version)
-        
-        # Reset camera settings.
-        camera = self._cameras.itemData(self._cameras.currentIndex()).toPyObject()[1]
-        original_zoom = tuple(cmds.getAttr(camera + '.' + attr) for attr in ('horizontalFilmOffset', 'verticalFilmOffset', 'overscan'))
-        cmds.setAttr(camera + '.horizontalFilmOffset', 0)
-        cmds.setAttr(camera + '.verticalFilmOffset', 0)
-        cmds.setAttr(camera + '.overscan', 1)
-        
-        original_selection = cmds.ls(sl=True)
-        cmds.select(list(self._nodes_to_export()), replace=True)
-        
-        cmds.file(export_path, type='mayaAscii', exportSelected=True)
-        
-        # Rewrite the file to work with 2011.
-        if maya_version > 2011:
-            downgrade.downgrade_to_2011(export_path, path)
-        
-        # Restore camera settings.
-        cmds.setAttr(camera + '.horizontalFilmOffset', original_zoom[0])
-        cmds.setAttr(camera + '.verticalFilmOffset', original_zoom[1])
-        cmds.setAttr(camera + '.overscan', original_zoom[2])
-        
-        # Restore selection.
-        if original_selection:
-            cmds.select(original_selection, replace=True)
-        else:
-            cmds.select(clear=True)
-        
-        self.close()
-        
-    def _warning(self, message):
-        cmds.warning(message)
 
-    def _error(self, message):
-        cmds.confirmDialog(title='Scene Name Error', message=message, icon='critical')
-        cmds.error(message)
+
+
 
 
 def __before_reload__():
