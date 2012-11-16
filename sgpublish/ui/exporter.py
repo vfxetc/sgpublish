@@ -6,6 +6,7 @@ import tempfile
 import platform
 import subprocess
 import traceback
+import functools
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
@@ -13,8 +14,11 @@ Qt = QtCore.Qt
 import sgfs.ui.scene_name.widget as scene_name
 from sgfs import SGFS
 
+from . import utils
+
 __also_reload__ = [
     'sgfs.ui.scene_name.widget',
+    '.utils',
 ]
 
 
@@ -320,7 +324,21 @@ class PublishTab(QtGui.QWidget):
                 raise ValueError('Could not find SGFS tagged entities')
             task = tasks[0]
         
-        self._exporter.publish(task, self.name(), self.description(), self.version(), self.screenshot_path())
+        publisher = self._exporter.publish(task, self.name(), self.description(), self.version(), self.screenshot_path())
+        
+        msg = QtGui.QMessageBox()
+        msg.setWindowTitle("Published")
+        msg.setText("Version %d of \"%s\" has been published." % (publisher.version, publisher.name))
+        
+        folder_button = msg.addButton("Open Folder", QtGui.QMessageBox.AcceptRole)
+        folder_button.clicked.connect(functools.partial(utils.call_open, publisher.directory))
+        
+        shotgun_button = msg.addButton("Open Shotgun", QtGui.QMessageBox.AcceptRole)
+        shotgun_button.clicked.connect(functools.partial(utils.call_open, publisher.entity.url))
+        
+        msg.addButton("Close", QtGui.QMessageBox.RejectRole)
+        
+        msg.exec_()
 
 
 class Widget(QtGui.QTabWidget):

@@ -47,6 +47,7 @@ class Exporter(object):
             self.record_publish_id(publisher.id)
             publisher.thumbnail_path = thumbnail
             self.export_publish(publisher)
+            return publisher
     
     def export_publish(self, publisher):
         self.export(publisher.directory, None)
