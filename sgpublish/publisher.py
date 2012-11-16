@@ -108,7 +108,10 @@ class Publisher(object):
             self._directory = directory
         else:
             self._directory = self.sgfs.path_from_template(link, '%s_publish' % type,
-                publish=self,
+                publish=self, # For b/c.
+                publisher=self, 
+                PublishEvent=self.entity,
+                self=self.entity, # To mimick Shotgun templates.
             )
         if not os.path.exists(self._directory):
             os.makedirs(self._directory)

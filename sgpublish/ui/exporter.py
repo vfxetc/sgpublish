@@ -10,10 +10,12 @@ import traceback
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
 
-from maya import cmds
-
 import sgfs.ui.scene_name.widget as scene_name
 from sgfs import SGFS
+
+__also_reload__ = [
+    'sgfs.ui.scene_name.widget',
+]
 
 
 def _box(layout, *args):
@@ -102,7 +104,7 @@ class PublishTab(QtGui.QWidget):
         
         self._exporter = exporter
         
-        basename = os.path.basename(cmds.file(q=True, sceneName=True))
+        basename = os.path.basename(exporter.filename_hint)
         basename = os.path.splitext(basename)[0]
         self._basename = re.sub(r'_*[rv]\d+', '', basename)
         
@@ -164,15 +166,11 @@ class PublishTab(QtGui.QWidget):
     def _fetch_existing_data(self):
         try:
             sgfs = SGFS()
-            workspace = cmds.workspace(query=True, rootDirectory=True)
-            print 'workspace', workspace
-            tasks = sgfs.entities_from_path(workspace)
+            tasks = sgfs.entities_from_path(self._exporter.workspace)
             if not tasks:
-                cmds.error('No entities in workspace.')
-                return
+                raise ValueError('No entities in workspace %r', self._exporter.workspace)
             if any(x['type'] != 'Task' for x in tasks):
-                cmds.error('Non-Task entity in workspace.')
-                return
+                raise ValueError('Non-Task entity in workspace %r', self._exporter.workspace)
             publishes = sgfs.session.find(
                 'PublishEvent',
                 [
@@ -194,8 +192,7 @@ class PublishTab(QtGui.QWidget):
         
     def _populate_existing_data(self, tasks, publishes):
         
-        history = cmds.fileInfo('sgpublish_id_history', query=True)
-        history = set(int(x.strip()) for x in history[0].split(',')) if history else set()
+        history = self._exporter.get_previous_publish_ids()
         
         select = None
         
@@ -254,7 +251,14 @@ class PublishTab(QtGui.QWidget):
         self._version_spinbox.setValue(data.get('version', 0) + 1)
         
     def take_full_screenshot(self):
+        
         # TODO: push this off into the maya-specific exporter
+        
+        try:
+            from maya import cmds
+        except ImportError:
+            pass
+        
         # Playblast the first screenshot.
         path = tempfile.NamedTemporaryFile(suffix=".jpg", prefix="publish", delete=False).name
         image_format = cmds.getAttr('defaultRenderGlobals.imageFormat')

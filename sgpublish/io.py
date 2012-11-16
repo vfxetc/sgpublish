@@ -25,6 +25,12 @@ class Exporter(object):
     def workspace(self):
         return self._workspace or os.getcwd()
     
+    def get_previous_publish_ids(self):
+        return set()
+    
+    def record_publish_id(self, id_):
+        pass
+    
     def publish(self, task, name, description, version=None, thumbnail=None):
         
         publish_type = self.publish_type
@@ -38,7 +44,7 @@ class Exporter(object):
             description=description,
             version=version,
         ) as publisher:
-        
+            self.record_publish_id(publisher.id)
             publisher.thumbnail_path = thumbnail
             self.export_publish(publisher)
     
