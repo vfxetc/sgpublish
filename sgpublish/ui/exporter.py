@@ -283,14 +283,21 @@ class PublishTab(QtGui.QWidget):
     
     def take_partial_screenshot(self, *args):
         path = tempfile.NamedTemporaryFile(suffix=".png", prefix="screenshot", delete=False).name
-        self._owner.beforeScreenshot.emit()
+        
+        owner = self
+        while owner and not hasattr(owner, 'beforeScreenshot'):
+            owner = owner.parent()
+        if not owner:
+            return
+        
+        owner.beforeScreenshot.emit()
         if platform.system() == "Darwin":
             # use built-in screenshot command on the mac
             proc = subprocess.Popen(['screencapture', '-mis', path])
         else:
             proc = subprocess.Popen(['import', path])
         proc.wait()
-        self._owner.afterScreenshot.emit()
+        owner.afterScreenshot.emit()
         if os.stat(path).st_size:
             self.setScreenshot(path)
     
