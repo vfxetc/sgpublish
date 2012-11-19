@@ -3,6 +3,8 @@ import os
 import re
 import tempfile
 import traceback
+import platform
+import subprocess
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
@@ -12,7 +14,10 @@ from sgfs import SGFS
 from ..utils import ComboBox, hbox, vbox
 from .. import utils
 
-__also_reload__ = ['..utils', '...io.base']
+__also_reload__ = [
+    '..utils',
+    '...io.base',
+]
 
 
 class Widget(QtGui.QWidget):
