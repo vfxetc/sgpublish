@@ -1,110 +1,21 @@
-from __future__ import absolute_import
-
+import functools
 import os
 import re
 import tempfile
-import platform
-import subprocess
 import traceback
-import functools
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
 
-import sgfs.ui.scene_name.widget as scene_name
 from sgfs import SGFS
 
-from . import utils
+from ..utils import ComboBox, hbox, vbox
+from .. import utils
 
-__also_reload__ = [
-    'sgfs.ui.scene_name.widget',
-    '.utils',
-]
+__also_reload__ = ['..utils']
 
 
-def _box(layout, *args):
-    for arg in args:
-        if isinstance(arg, basestring):
-            layout.addWidget(QtGui.QLabel(arg))
-        elif isinstance(arg, QtGui.QLayout):
-            layout.addLayout(arg)
-        else:
-            layout.addWidget(arg)
-    return layout
-
-hbox = lambda *args, **kwargs: _box(QtGui.QHBoxLayout(**kwargs), *args)
-vbox = lambda *args, **kwargs: _box(QtGui.QVBoxLayout(**kwargs), *args)
-
-
-class ComboBox(QtGui.QComboBox):
-    
-    def itemData(self, *args):
-        return self._clean_data(super(ComboBox, self).itemData(*args).toPyObject())
-    
-    def currentData(self):
-        return self.itemData(self.currentIndex())
-    
-    def _clean_data(self, data):
-        if isinstance(data, dict):
-            return dict(self._clean_data(x) for x in data.iteritems())
-        if isinstance(data, (tuple, list)):
-            return type(data)(self._clean_data(x) for x in data)
-        if isinstance(data, QtCore.QString):
-            return unicode(data)
-        return data
-
-
-class CustomTab(QtGui.QWidget):
-    
-    def __init__(self, exporter):
-        super(CustomTab, self).__init__()
-        self._exporter = exporter
-        self._setup_ui()
-    
-    def _setup_ui(self):
-        self.setLayout(QtGui.QHBoxLayout())
-        
-        self._path_field = QtGui.QLineEdit("NOT YET IMPLEMENTED")
-        
-        self._browse_button = QtGui.QPushButton("Browse")
-        
-        self.layout().addLayout(vbox("Export Path", hbox(self._path_field, self._browse_button, spacing=2)))
-        
-        self._browse_button.setFixedHeight(self._path_field.sizeHint().height())
-        self._browse_button.setFixedWidth(self._browse_button.sizeHint().width())
-    
-    def export(self, **kwargs):
-        path = str(self._path_field.text())
-        self._exporter.export(os.path.dirname(path), path, **kwargs)
-
-
-class WorkAreaTab(scene_name.SceneNameWidget):
-    
-    def __init__(self, exporter, kwargs):
-        
-        # Copy the kwargs and set some defaults.
-        kwargs = dict(kwargs or {})
-        kwargs.setdefault('warning', self._on_warning)
-        kwargs.setdefault('error', self._on_error)
-        kwargs.setdefault('workspace', exporter.workspace)
-        kwargs.setdefault('filename', exporter.filename_hint)
-        
-        super(WorkAreaTab, self).__init__(kwargs)
-        self._exporter = exporter
-    
-    def _on_warning(self, msg):
-        pass
-    
-    def _on_error(self, msg):
-        QtGui.QMessageBox.critical(None, 'Scene Name Error', msg)
-        raise ValueError(msg)
-    
-    def export(self, **kwargs):
-        path = self.namer.get_path()
-        self._exporter.export(os.path.dirname(path), path, **kwargs)
-
-
-class PublishTab(QtGui.QWidget):
+class Widget(QtGui.QWidget):
     
     # Windows should hide on these.
     beforeScreenshot = QtCore.pyqtSignal()
@@ -114,7 +25,7 @@ class PublishTab(QtGui.QWidget):
     loaded_publishes = QtCore.pyqtSignal(object, object)
     
     def __init__(self, exporter):
-        super(PublishTab, self).__init__()
+        super(Widget, self).__init__()
         
         self._exporter = exporter
         
@@ -373,85 +284,3 @@ class PublishTab(QtGui.QWidget):
         
         msg.exec_()
 
-
-class TabWidget(QtGui.QTabWidget):
-    
-    """Slight extension to the standard QTabWidget which does two things:
-    
-    1) Passes the `export()` method on to the active tab.
-    2) Resets its sizeHint whenever the tab is changed.
-    
-    """
-    
-    def __init__(self):
-        super(TabWidget, self).__init__()
-        self._auto_adjust = True
-        self._setup_ui()
-    
-    def _setup_ui(self):
-        
-        # Reset the background of the widgets to the window colour.
-        self.setStyleSheet('''
-            QTabWidget {
-                background-color: palette(window);
-            }
-        ''')
-        self.currentChanged.connect(self._on_currentChanged)
-    
-    def autoAdjust(self):
-        return self._auto_adjust
-    
-    def setAutoAdjust(self, v):
-        self._auto_adjust = bool(v)
-    
-    def _on_currentChanged(self):
-        if self._auto_adjust:
-            self.updateGeometry()
-            p = self.parent()
-            while p:
-                p.adjustSize()
-                p = p.parent()
-    
-    def sizeHint(self):
-        
-        if not self._auto_adjust:
-            return super(TabWidget, self).sizeHint()
-        
-        bar = self.tabBar()
-        widget = self.currentWidget()
-        
-        hint = widget.sizeHint()
-        hint.setHeight(hint.height() + bar.sizeHint().height())
-        
-        for i in xrange(self.count()):
-            hint.setWidth(max(hint.width(), self.widget(i).sizeHint().width()))
-        
-        return hint
-    
-    def minimumSizeHint(self):
-        if not self._auto_adjust:
-            return super(TabWidget, self).minimumSizeHint()
-        return self.sizeHint()
-    
-    def export(self, **kwargs):
-        self.currentWidget().export(**kwargs)
-
-
-
-
-
-def __before_reload__():
-    if dialog:
-        dialog.close()
-
-dialog = None
-
-def run():
-    
-    global dialog
-    
-    if dialog:
-        dialog.close()
-    
-    dialog = PublishTab()    
-    dialog.show()
