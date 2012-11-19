@@ -33,5 +33,5 @@ class Widget(scene_name.SceneNameWidget):
     
     def export(self, **kwargs):
         path = self.namer.get_path()
-        self._exporter.export(os.path.dirname(path), path, **kwargs)
+        return self._exporter.export(os.path.dirname(path), path, **kwargs)
 
