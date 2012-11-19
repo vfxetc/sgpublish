@@ -7,11 +7,10 @@ __also_reload__ = ['..publisher']
 
 class Exporter(object):
     
-    def __init__(self, workspace=None, filename_hint=None, publish_type=None, export_func=None):
+    def __init__(self, workspace=None, filename_hint=None, publish_type=None):
         self._workspace = workspace
         self._filename_hint = filename_hint
         self._publish_type = publish_type
-        self._export_func = export_func
 
     @property
     def publish_type(self):
@@ -31,7 +30,7 @@ class Exporter(object):
     def record_publish_id(self, id_):
         pass
     
-    def publish(self, task, name, description, version=None, thumbnail=None):
+    def publish(self, task, name, description, version=None, thumbnail=None, **kwargs):
         
         publish_type = self.publish_type
         if not publish_type:
@@ -44,20 +43,21 @@ class Exporter(object):
             description=description,
             version=version,
         ) as publisher:
+            
+            # Record the ID before the export so that it is included.
             self.record_publish_id(publisher.id)
+            
+            # Set the thumbnail before so that the export may override it.
             publisher.thumbnail_path = thumbnail
-            self.export_publish(publisher)
+            
+            self.export_publish(publisher, **kwargs)
             return publisher
     
-    def export_publish(self, publisher):
-        self.export(publisher.directory, None)
+    def export_publish(self, publisher, **kwargs):
+        self.export(publisher.directory, None, **kwargs)
     
-    def export(self, directory, path):
-        # The path *may* be None.
-        if self._export_func:
-            self._export_func(directory, path)
-        else:
-            raise NotImplementedError()
+    def export(self, directory, path, **kwargs):
+        raise NotImplementedError()
 
 
 class Importer(object):

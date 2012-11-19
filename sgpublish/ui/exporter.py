@@ -73,32 +73,42 @@ class CustomTab(QtGui.QWidget):
         self._browse_button.setFixedHeight(self._path_field.sizeHint().height())
         self._browse_button.setFixedWidth(self._browse_button.sizeHint().width())
     
-    def export(self):
+    def export(self, **kwargs):
         path = str(self._path_field.text())
-        self._exporter.export(os.path.dirname(path), path)
+        self._exporter.export(os.path.dirname(path), path, **kwargs)
 
 
 class WorkAreaTab(scene_name.SceneNameWidget):
     
     def __init__(self, exporter, kwargs):
+        
+        # Copy the kwargs and set some defaults.
+        kwargs = dict(kwargs or {})
         kwargs.setdefault('warning', self._on_warning)
         kwargs.setdefault('error', self._on_error)
+        kwargs.setdefault('workspace', exporter.workspace)
+        kwargs.setdefault('filename', exporter.filename_hint)
+        
         super(WorkAreaTab, self).__init__(kwargs)
         self._exporter = exporter
     
     def _on_warning(self, msg):
-        QtGui.QMessageBox.warning(None, 'Scene Name Warning', msg)
+        pass
     
     def _on_error(self, msg):
         QtGui.QMessageBox.critical(None, 'Scene Name Error', msg)
         raise ValueError(msg)
     
-    def export(self):
+    def export(self, **kwargs):
         path = self.namer.get_path()
-        self._exporter.export(os.path.dirname(path), path)
+        self._exporter.export(os.path.dirname(path), path, **kwargs)
 
 
 class PublishTab(QtGui.QWidget):
+    
+    # Windows should hide on these.
+    beforeScreenshot = QtCore.pyqtSignal()
+    afterScreenshot = QtCore.pyqtSignal()
     
     # Need a signal to communicate across threads.
     loaded_publishes = QtCore.pyqtSignal(object, object)
@@ -299,21 +309,18 @@ class PublishTab(QtGui.QWidget):
     
     def take_partial_screenshot(self, *args):
         path = tempfile.NamedTemporaryFile(suffix=".png", prefix="screenshot", delete=False).name
+
+        self.beforeScreenshot.emit()
         
-        owner = self
-        while owner and not hasattr(owner, 'beforeScreenshot'):
-            owner = owner.parent()
-        if not owner:
-            return
-        
-        owner.beforeScreenshot.emit()
         if platform.system() == "Darwin":
             # use built-in screenshot command on the mac
             proc = subprocess.Popen(['screencapture', '-mis', path])
         else:
             proc = subprocess.Popen(['import', path])
         proc.wait()
-        owner.afterScreenshot.emit()
+        
+        self.afterScreenshot.emit()
+        
         if os.stat(path).st_size:
             self.setScreenshot(path)
     
@@ -336,7 +343,7 @@ class PublishTab(QtGui.QWidget):
     def screenshot_path(self):
         return self._screenshot_path
     
-    def export(self):
+    def export(self, **kwargs):
         
         data = self._task_combo.currentData()
         task = data.get('task')
@@ -347,7 +354,10 @@ class PublishTab(QtGui.QWidget):
                 raise ValueError('Could not find SGFS tagged entities')
             task = tasks[0]
         
-        publisher = self._exporter.publish(task, self.name(), self.description(), self.version(), self.screenshot_path())
+        publisher = self._exporter.publish(
+            task, self.name(), self.description(), self.version(), self.screenshot_path(),
+            **kwargs
+        )
         
         msg = QtGui.QMessageBox()
         msg.setWindowTitle("Published")
@@ -364,50 +374,19 @@ class PublishTab(QtGui.QWidget):
         msg.exec_()
 
 
-class Widget(QtGui.QTabWidget):
+class TabWidget(QtGui.QTabWidget):
     
-    # Parents should hide on these.
-    beforeScreenshot = QtCore.pyqtSignal()
-    afterScreenshot = QtCore.pyqtSignal()
-
-    custom_label = "Custom"
-    custom_class = CustomTab
-    work_area_label = "Work Area"
-    work_area_class = WorkAreaTab
-    publish_label = "Publish"
-    publish_class = PublishTab
+    """Slight extension to the standard QTabWidget which does two things:
     
-    def __init__(self, exporter):
-        super(Widget, self).__init__()
-        self._exporter = exporter
+    1) Passes the `export()` method on to the active tab.
+    2) Resets its sizeHint whenever the tab is changed.
+    
+    """
+    
+    def __init__(self):
+        super(TabWidget, self).__init__()
+        self._auto_adjust = True
         self._setup_ui()
-    
-    @classmethod
-    def factory(cls, exporter, custom=False, work_area=False, publish=False, work_area_kwargs=None):
-        
-        if not (custom or work_area or publish):
-            raise ValueError('must have atleast one tab')
-        
-        self = cls(exporter)
-        
-        if custom:
-            tab = self.custom_class(exporter)
-            self.addTab(tab, self.custom_label)
-        
-        if work_area:
-            work_area_kwargs = dict(work_area_kwargs or {})
-            work_area_kwargs.setdefault('workspace', exporter.workspace)
-            work_area_kwargs.setdefault('filename', exporter.filename_hint)
-            tab = self.work_area_class(exporter, work_area_kwargs)
-            self.addTab(tab, self.work_area_label)
-        
-        if publish:
-            tab = self.publish_class(exporter)
-            self.addTab(tab, self.publish_label)
-            
-        self._work_area_kwargs = work_area_kwargs
-        
-        return self
     
     def _setup_ui(self):
         
@@ -417,10 +396,26 @@ class Widget(QtGui.QTabWidget):
                 background-color: palette(window);
             }
         ''')
-        
-        self.currentChanged.connect(self._on_change)
+        self.currentChanged.connect(self._on_currentChanged)
+    
+    def autoAdjust(self):
+        return self._auto_adjust
+    
+    def setAutoAdjust(self, v):
+        self._auto_adjust = bool(v)
+    
+    def _on_currentChanged(self):
+        if self._auto_adjust:
+            self.updateGeometry()
+            p = self.parent()
+            while p:
+                p.adjustSize()
+                p = p.parent()
     
     def sizeHint(self):
+        
+        if not self._auto_adjust:
+            return super(TabWidget, self).sizeHint()
         
         bar = self.tabBar()
         widget = self.currentWidget()
@@ -434,13 +429,12 @@ class Widget(QtGui.QTabWidget):
         return hint
     
     def minimumSizeHint(self):
+        if not self._auto_adjust:
+            return super(TabWidget, self).minimumSizeHint()
         return self.sizeHint()
     
-    def _on_change(self, *args):
-        self.updateGeometry()
-    
-    def export(self):
-        self.currentWidget().export()
+    def export(self, **kwargs):
+        self.currentWidget().export(**kwargs)
 
 
 
