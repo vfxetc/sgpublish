@@ -1,3 +1,4 @@
+import functools
 import subprocess
 import platform
 
@@ -41,3 +42,28 @@ def call_open(x):
         subprocess.call(['open', x])
     else:
         subprocess.call(['xdg-open', x])
+
+
+def announce_publish_success(
+    publisher,
+    title="Published \"{publisher.type}\"",
+    message="Version {publisher.version} of \"{publisher.name}\" has been published.",
+    open_folder=True,
+    open_shotgun=True,
+):
+
+    msg = QtGui.QMessageBox()
+    msg.setWindowTitle(title.format(publisher=publisher))
+    msg.setText(message.format(publisher=publisher))
+    
+    if open_folder:
+        folder_button = msg.addButton("Open Folder", QtGui.QMessageBox.AcceptRole)
+        folder_button.clicked.connect(functools.partial(call_open, publisher.directory))
+    
+    if open_shotgun:
+        shotgun_button = msg.addButton("Open Shotgun", QtGui.QMessageBox.AcceptRole)
+        shotgun_button.clicked.connect(functools.partial(call_open, publisher.entity.url))
+        
+    msg.addButton("Close", QtGui.QMessageBox.RejectRole)
+    
+    msg.exec_()

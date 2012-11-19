@@ -61,4 +61,4 @@ class Widget(QtGui.QTabWidget):
         return self.sizeHint()
     
     def export(self, **kwargs):
-        self.currentWidget().export(**kwargs)
+        return self.currentWidget().export(**kwargs)

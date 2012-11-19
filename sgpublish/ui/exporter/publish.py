@@ -270,17 +270,5 @@ class Widget(QtGui.QWidget):
             **kwargs
         )
         
-        msg = QtGui.QMessageBox()
-        msg.setWindowTitle("Published")
-        msg.setText("Version %d of \"%s\" has been published." % (publisher.version, publisher.name))
-        
-        folder_button = msg.addButton("Open Folder", QtGui.QMessageBox.AcceptRole)
-        folder_button.clicked.connect(functools.partial(utils.call_open, publisher.directory))
-        
-        shotgun_button = msg.addButton("Open Shotgun", QtGui.QMessageBox.AcceptRole)
-        shotgun_button.clicked.connect(functools.partial(utils.call_open, publisher.entity.url))
-        
-        msg.addButton("Close", QtGui.QMessageBox.RejectRole)
-        
-        msg.exec_()
+        return publisher
 
