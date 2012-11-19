@@ -4,7 +4,7 @@ from . import base
 
 from maya import cmds
 
-__also_import__ = ['.base']
+__also_reload__ = ['.base']
 
 
 class Exporter(base.Exporter):

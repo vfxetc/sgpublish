@@ -12,7 +12,7 @@ from sgfs import SGFS
 from ..utils import ComboBox, hbox, vbox
 from .. import utils
 
-__also_reload__ = ['..utils']
+__also_reload__ = ['..utils', '...io.base']
 
 
 class Widget(QtGui.QWidget):
