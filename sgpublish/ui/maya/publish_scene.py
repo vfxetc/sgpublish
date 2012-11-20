@@ -86,7 +86,7 @@ class Dialog(QtGui.QDialog):
         
         button = QtGui.QPushButton('Publish')
         button.clicked.connect(self._on_submit)
-        self.layout().addLayout(VBox(button))
+        self.layout().addLayout(ui_utils.vbox(button))
     
     def _on_submit(self, *args):
         
