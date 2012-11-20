@@ -78,7 +78,13 @@ class Dialog(QtGui.QDialog):
     def _setup_namer(self):
 
         ext = os.path.splitext(self._publish['sg_path'])[1]
-        version = self._publish['sg_version'] + 1
+        
+        # Increment the version number if copying to the same task.
+        if self._node.state['Task'] is self._publish['sg_link']:
+            version = self._publish['sg_version'] + 1
+        else:
+            version = 1
+            
         workspace = os.path.join(self._task_path, 'maya')
         scenes = os.path.join(workspace, 'scenes')
         self._namer._namer = SceneName(
