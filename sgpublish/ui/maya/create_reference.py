@@ -1,4 +1,5 @@
 import functools
+import itertools
 import os
 
 from PyQt4 import QtCore, QtGui
@@ -65,6 +66,7 @@ class Dialog(QtGui.QDialog):
     
     def __init__(self):
         super(Dialog, self).__init__()
+        self._node = None
         self._setup_ui()
     
     def _setup_ui(self):
@@ -80,6 +82,11 @@ class Dialog(QtGui.QDialog):
         self.layout().addWidget(self._picker)
         
         button_layout = QtGui.QHBoxLayout()
+        
+        self._namespace_field = QtGui.QLineEdit()
+        button_layout.addWidget(QtGui.QLabel("Namespace:"))
+        button_layout.addWidget(self._namespace_field)
+        
         button_layout.addStretch()
         self.layout().addLayout(button_layout)
         self._button = QtGui.QPushButton("Create Reference")
@@ -91,9 +98,41 @@ class Dialog(QtGui.QDialog):
         self._picker.setPreviewWidget(self._preview)
         self._picker.updatePreviewWidget.connect(self._on_update_preview)
     
+    def _existing_namespaces(self):
+        existing = set()
+        for ref in cmds.file(q=True, reference=True):
+            namespace = cmds.file(ref, q=True, namespace=True)
+            if namespace:
+                existing.add(namespace)
+        return existing
+        
     def _on_node_changed(self, node):
-        self._node = node
+        
+        # Button only works when there is a publish.
         self._button.setEnabled('PublishEvent' in node.state)
+        
+        last_publish = self._node and self._node.state.get('PublishEvent')
+        publish = node.state.get('PublishEvent')
+        if publish and (last_publish is None or 
+                        last_publish['sg_link'] is not publish['sg_link'] or
+                        last_publish['code'] != publish['code']
+        ):
+            
+            # Find a name which doesn't clash.
+            namespace = publish['code']
+            existing = self._existing_namespaces()
+            if namespace in existing:
+                for i in itertools.count(1):
+                    indexed_name = '%s_%d' % (namespace, i)
+                    if indexed_name not in existing:
+                        namespace = indexed_name
+                        break
+            
+            self._namespace_field.setText(namespace)
+        
+        self._node = node
+        
+        
     
     def _on_update_preview(self, index):
         node = self._model.node_from_index(index)
@@ -103,26 +142,18 @@ class Dialog(QtGui.QDialog):
     def _on_create_reference(self):
         
         publish = self._node.state['PublishEvent']
-        name, path = publish.fetch(('code', 'sg_path'))
+        path = publish.fetch('sg_path')
         
-        # Determine which namespaces exist.
-        existing = set()
-        for ref in cmds.file(q=True, reference=True):
-            ns = cmds.file(ref, q=True, namespace=True)
-            if ns:
-                existing.add(ns)
-        
-        # Find a name which doesn't clash.
-        if name in existing:
-            i = 1
-            while True:
-                indexed_name = '%s_%d' % (name, i)
-                if indexed_name not in existing:
-                    name = indexed_name
-                    break
+        # Make sure the namespace doesn't already exist
+        namespace = str(self._namespace_field.text())
+        if namespace in self._existing_namespaces():
+            QtGui.QMessageBox.critical(None, 'Namespace Collision',
+                'There is already a reference in the scene with that namespace.'
+            )
+            return
         
         # Reference the file.
-        cmds.file(path, reference=True, namespace=name)
+        cmds.file(path, reference=True, namespace=namespace)
         self.hide()
     
 def __before_reload__():
