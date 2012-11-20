@@ -101,9 +101,28 @@ class Dialog(QtGui.QDialog):
         self._preview.update(entity)
         
     def _on_create_reference(self):
+        
         publish = self._node.state['PublishEvent']
-        path = publish.fetch('sg_path')
-        cmds.file(path, reference=True)
+        name, path = publish.fetch(('code', 'sg_path'))
+        
+        # Determine which namespaces exist.
+        existing = set()
+        for ref in cmds.file(q=True, reference=True):
+            ns = cmds.file(ref, q=True, namespace=True)
+            if ns:
+                existing.add(ns)
+        
+        # Find a name which doesn't clash.
+        if name in existing:
+            i = 1
+            while True:
+                indexed_name = '%s_%d' % (name, i)
+                if indexed_name not in existing:
+                    name = indexed_name
+                    break
+        
+        # Reference the file.
+        cmds.file(path, reference=True, namespace=name)
         self.hide()
     
 def __before_reload__():
