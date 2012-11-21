@@ -69,7 +69,7 @@ class Publisher(object):
         self.type = str(type)
         self.name = str(name)
         self.description = str(description)
-        self.created_by = created_by or utils.guess_shotgun_user()
+        self.created_by = created_by or self.sgfs.session.guess_user()
         self.path = path
         
         # First stage of the publish: create an "empty" PublishEvent.
