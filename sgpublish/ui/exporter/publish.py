@@ -161,7 +161,7 @@ class Widget(QtGui.QWidget):
         data = self._name_combo.currentData()
         if not data:
             return
-        was_new = 'new' in data
+        was_new = 'new' in data or 'loading' in data
         self._name_combo.clear()
         data = self._task_combo.currentData() or {}
         
