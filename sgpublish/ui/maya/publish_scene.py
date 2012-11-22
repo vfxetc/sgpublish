@@ -22,12 +22,13 @@ from sgfs import SGFS
 from .. import utils as ui_utils
 from ... import utils
 from ...io import maya as io_maya
-from ..exporter import publish as ui_publish
+from ..exporter.maya import publish as ui_publish
 
 __also_reload__ = [
     '...io.maya',
-    '..exporter.publish',
+    '..utils',
     '...utils',
+    '..exporter.maya.publish',
     '..utils',
 ]
 

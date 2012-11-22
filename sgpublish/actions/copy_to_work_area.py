@@ -12,6 +12,7 @@ import sgfs.ui.picker.presets as picker_presets
 import sgfs.ui.picker.utils as picker_utils
 
 from .. import utils
+from ..ui import utils as ui_utils
 
 
 class Dialog(QtGui.QDialog):
@@ -119,9 +120,7 @@ class Dialog(QtGui.QDialog):
 def run(entity_type, selected_ids, **kwargs):
     
     app = QtGui.QApplication([])
-    QtGui.QApplication.setWindowIcon(QtGui.QIcon(os.path.abspath(os.path.join(
-        __file__, '..', '..', '..', 'icons', 'fatcow', 'brick_go.png'
-    ))))
+    QtGui.QApplication.setWindowIcon(ui_utils.icon('fatcow/brick_go', as_icon=True))
         
     sgfs = SGFS()
     publish = sgfs.session.merge({'type': entity_type, 'id': selected_ids[0]})

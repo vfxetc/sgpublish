@@ -20,4 +20,5 @@ def get_next_revision_path(directory, basename, ext, version, revision=1):
     basename = strip_version(basename)
     revision = get_next_revision(directory, basename, ext, version, revision)
     return os.path.join(directory, '%s_v%04d_r%04d%s' % (basename, version, revision, ext))
-    
+
+

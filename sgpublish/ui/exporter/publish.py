@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import functools
 import os
 import re
@@ -13,6 +15,7 @@ from sgfs import SGFS
 
 from ..utils import ComboBox, hbox, vbox
 from .. import utils
+from .. import utils as ui_utils
 
 __also_reload__ = [
     '..utils',
@@ -39,6 +42,9 @@ class Widget(QtGui.QWidget):
         self._basename = re.sub(r'_*[rv]\d+', '', basename)
         
         self._setup_ui()
+        
+        # First screenshot.
+        self.take_full_screenshot()
     
     def _setup_ui(self):
         
@@ -81,19 +87,29 @@ class Widget(QtGui.QWidget):
         self._description = QtGui.QTextEdit('')
         self._description.setMaximumHeight(100)
         
-        self._screenshot_path = None
-        self._screenshot = QtGui.QLabel()
-        self._screenshot.setFrameShadow(QtGui.QFrame.Sunken)
-        self._screenshot.setFrameShape(QtGui.QFrame.Panel)
-        self._screenshot.setToolTip("Click to specify part of screen.")
-        self._screenshot.mouseReleaseEvent = self.take_partial_screenshot
+        self._thumbnail_path = None
+        self._thumbnail_canvas = QtGui.QLabel()
+        self._thumbnail_canvas.setFrameShadow(QtGui.QFrame.Sunken)
+        self._thumbnail_canvas.setFrameShape(QtGui.QFrame.Panel)
+        self._thumbnail_canvas.setToolTip("Click to specify part of screen.")
+        self._thumbnail_canvas.mouseReleaseEvent = self.take_partial_screenshot
         
         self.layout().addLayout(hbox(
             vbox("Describe Your Changes", self._description),
-            vbox("Screenshot", self._screenshot),
+            vbox("Thumbnail", self._thumbnail_canvas),
         ))
         
-        self.take_full_screenshot()
+        self._movie_path = QtGui.QLineEdit()
+        self._movie_browse = QtGui.QPushButton(ui_utils.icon('silk/folder', as_icon=True), "Browse")
+        self._movie_layout = hbox(self._movie_path, self._movie_browse)
+        self.layout().addLayout(vbox("Path to Movie or Frames", self._movie_layout, spacing=2))
+        self._movie_browse.setFixedHeight(self._movie_path.sizeHint().height())
+        self._movie_browse.setFixedWidth(self._movie_browse.sizeHint().width() + 2)
+        
+        # For dev only!
+        self._movie_path.setEnabled('KS_DEV_ARGS' in os.environ)
+        self._movie_browse.setEnabled('KS_DEV_ARGS' in os.environ)
+        
     
     def _fetch_existing_data(self):
         try:
@@ -197,31 +213,7 @@ class Widget(QtGui.QWidget):
             self._version_warning_issued = True
         
     def take_full_screenshot(self):
-        
-        # TODO: push this off into the maya-specific exporter
-        
-        try:
-            from maya import cmds
-        except ImportError:
-            pass
-        
-        # Playblast the first screenshot.
-        path = tempfile.NamedTemporaryFile(suffix=".jpg", prefix="publish", delete=False).name
-        image_format = cmds.getAttr('defaultRenderGlobals.imageFormat')
-        cmds.setAttr('defaultRenderGlobals.imageFormat', 8)
-        try:
-            frame = cmds.currentTime(q=True)
-            cmds.playblast(
-                frame=[frame],
-                format='image',
-                completeFilename=path,
-                viewer=False,
-                p=100,
-                framePadding=4,
-            )
-        finally:
-            cmds.setAttr('defaultRenderGlobals.imageFormat', image_format)
-        self.setScreenshot(path)
+        pass
     
     def take_partial_screenshot(self, *args):
         path = tempfile.NamedTemporaryFile(suffix=".png", prefix="screenshot", delete=False).name
@@ -238,13 +230,13 @@ class Widget(QtGui.QWidget):
         self.afterScreenshot.emit()
         
         if os.stat(path).st_size:
-            self.setScreenshot(path)
+            self.setThumbnail(path)
     
-    def setScreenshot(self, path):
-        self._screenshot_path = path
+    def setThumbnail(self, path):
+        self._thumbnail_path = path
         pixmap = QtGui.QPixmap(path).scaled(200, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self._screenshot.setPixmap(pixmap)
-        self._screenshot.setFixedSize(pixmap.size())
+        self._thumbnail_canvas.setPixmap(pixmap)
+        self._thumbnail_canvas.setFixedSize(pixmap.size())
     
     def name(self):
         data = self._name_combo.currentData()
@@ -256,8 +248,8 @@ class Widget(QtGui.QWidget):
     def version(self):
         return self._version_spinbox.value()
     
-    def screenshot_path(self):
-        return self._screenshot_path
+    def thumbnail_path(self):
+        return self._thumbnail_path
     
     def export(self, **kwargs):
         
