@@ -61,16 +61,30 @@ class Publisher(object):
     
     """
     
-    def __init__(self, link, type, name, version=None, directory=None, path=None, description=None, created_by=None, sgfs=None):
+    def __init__(self, link, type, name, sgfs=None,
+        created_by=None,
+        description=None,
+        directory=None,
+        frames_path=None,
+        movie_path=None,
+        movie_url=None,
+        path=None,
+        thumbnail_path=None,
+        version=None,
+    ):
         
         self.sgfs = sgfs or (SGFS(session=link.session) if isinstance(link, Entity) else SGFS())
         
-        self.link = self.sgfs.session.merge(link)
-        self.type = str(type)
-        self.name = str(name)
-        self.description = str(description)
         self.created_by = created_by or self.sgfs.session.guess_user()
+        self.description = str(description)
+        self.frames_path = frames_path
+        self.link = self.sgfs.session.merge(link)
+        self.movie_path = movie_path
+        self.movie_url = movie_url
+        self.name = str(name)
         self.path = path
+        self.thumbnail_path = thumbnail_path
+        self.type = str(type)
         
         # First stage of the publish: create an "empty" PublishEvent.
         self.entity = self.sgfs.session.create('PublishEvent', {
@@ -81,6 +95,9 @@ class Publisher(object):
             'code': self.name,
             'sg_version': 0, # Signifies that this is "empty".
             'created_by': self.created_by,
+            'sg_path_to_frames': self.frames_path,
+            'sg_path_to_movie': self.movie_path,
+            'sg_qt': self.movie_url,
         })
         
         # Determine the version number by looking at the existing publishes.
@@ -126,9 +143,6 @@ class Publisher(object):
         
         # Files to copy on commit; (src_path, dst_path)
         self._files = []
-        
-        # Thumbnail to publish.
-        self.thumbnail_path = None
     
     @property
     def id(self):

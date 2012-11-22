@@ -51,13 +51,13 @@ class Exporter(object):
         """
         pass
     
-    def publish(self, task, name, description, version=None, thumbnail=None, **kwargs):
+    def publish(self, link, name, export_kwargs=None, **publisher_kwargs):
         """Trigger a publish.
         
         This method only deals with setting up the publisher, and uses
         :meth:`export_publish` to do the work.
         
-        :param kwargs: Passed to :meth:`export_publish`.
+        :param export_kwargs: Passed to :meth:`export_publish`.
         :returns: The publisher used.
         
         """
@@ -65,25 +65,16 @@ class Exporter(object):
         if not publish_type:
             raise ValueError('cannot publish without type')
         
-        with Publisher(
-            type=publish_type,
-            link=task,
-            name=name,
-            description=description,
-            version=version,
-        ) as publisher:
+        with Publisher(link, publish_type, name, **publisher_kwargs) as publisher:
             
             # Record the ID before the export so that it is included.
             self.record_publish_id(publisher.id)
             
-            # Set the thumbnail before so that the export may override it.
-            publisher.thumbnail_path = thumbnail
-            
             # This is a hook that everyone should allow to go up the full chain.
-            self.before_export_publish(publisher, **kwargs)
+            self.before_export_publish(publisher, **export_kwargs)
             
             # Completely overridable by children.
-            self.export_publish(publisher, **kwargs)
+            self.export_publish(publisher, **export_kwargs)
             
             return publisher
     

@@ -270,8 +270,11 @@ class Widget(QtGui.QWidget):
                 raise ValueError('Could not find SGFS tagged entities')
             task = tasks[0]
         
-        return self._exporter.publish(
-            task, self.name(), self.description(), self.version(), self.screenshot_path(),
-            **kwargs
+        return self._exporter.publish(task,
+            name=self.name(),
+            description=self.description(),
+            version=self.version(),
+            thumbnail_path=self.thumbnail_path(),
+            export_kwargs=kwargs,
         )
 
