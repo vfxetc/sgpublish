@@ -59,6 +59,12 @@ class Widget(QtGui.QWidget):
         self._name_combo.addItem('Create new stream...', {'new': True})
         self._name_combo.currentIndexChanged.connect(self._name_changed)
         
+        self.layout().addLayout(hbox(
+            vbox("Task", self._task_combo),
+            vbox("Publish Stream", self._name_combo),
+            spacing=4
+        ))
+        
         self._name_field = QtGui.QLineEdit(self._basename)
         self._name_field.setEnabled(False)
         
@@ -68,14 +74,11 @@ class Widget(QtGui.QWidget):
         self._version_spinbox.valueChanged.connect(self._on_version_changed)
         self._version_warning_issued = False
         
-        self.layout().addLayout(hbox(
-            vbox("Task", self._task_combo),
-            vbox("Publish Stream", self._name_combo),
-        ))
         
         self.layout().addLayout(hbox(
             vbox("Name", self._name_field),
             vbox("Version", self._version_spinbox),
+            spacing=4
         ))
         
         # Get publish data in the background.
@@ -100,9 +103,10 @@ class Widget(QtGui.QWidget):
         ))
         
         self._movie_path = QtGui.QLineEdit()
-        self._movie_browse = QtGui.QPushButton(ui_utils.icon('silk/folder', as_icon=True), "Browse")
+        self._movie_browse = QtGui.QPushButton(ui_utils.icon('silk/folder', size=12, as_icon=True), "Browse")
+        self._movie_browse.clicked.connect(self._on_movie_browse)
         self._movie_layout = hbox(self._movie_path, self._movie_browse)
-        self.layout().addLayout(vbox("Path to Movie or Frames", self._movie_layout, spacing=2))
+        self.layout().addLayout(vbox("Path to Movie or Frames", self._movie_layout, spacing=4))
         self._movie_browse.setFixedHeight(self._movie_path.sizeHint().height())
         self._movie_browse.setFixedWidth(self._movie_browse.sizeHint().width() + 2)
         
@@ -211,6 +215,24 @@ class Widget(QtGui.QWidget):
                 self._version_spinbox.setValue(self._version_spinbox.minimum())
                 return
             self._version_warning_issued = True
+    
+    def _on_movie_browse(self):
+        
+        existing = str(self._movie_path.text())
+        
+        dialog = QtGui.QFileDialog(None, "Select Movie or First Frame")
+        dialog.setFilter('Movie or Frame (*.mov *.exr *.tif *.tiff *.jpg *.jpeg)')
+        dialog.setFileMode(dialog.ExistingFile)
+        dialog.setDirectory(os.path.dirname(existing) if existing else os.getcwd())
+        if existing:
+            dialog.selectFile(existing)
+        
+        if not dialog.exec_():
+            return
+        
+        files = dialog.selectedFiles()
+        path = str(files.first())
+        self._movie_path.setText(path)
         
     def take_full_screenshot(self):
         pass

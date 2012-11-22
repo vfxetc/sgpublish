@@ -4,6 +4,7 @@ import platform
 import subprocess
 
 from PyQt4 import QtCore, QtGui
+Qt = QtCore.Qt
 
 
 class ComboBox(QtGui.QComboBox):
@@ -71,7 +72,7 @@ def announce_publish_success(
 
 
 _icons_by_name = {}
-def icon(name, as_icon=False):
+def icon(name, size=None, as_icon=False):
     
     try:
         icon = _icons_by_name[name]
@@ -81,13 +82,16 @@ def icon(name, as_icon=False):
             '..', '..', '..',
             'art', 'icons', name + (os.path.splitext(name)[1] or '.png')
         ))
-        print 'icon path', path
+
         if os.path.exists(path):
             icon = QtGui.QPixmap(path)
         else:
             icon = None
     
         _icons_by_name[name] = icon
+    
+    if icon and size:
+        icon = icon.scaled(size, size, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
     
     if icon and as_icon:
         icon = QtGui.QIcon(icon)
