@@ -79,8 +79,16 @@ class Exporter(object):
             # Set the thumbnail before so that the export may override it.
             publisher.thumbnail_path = thumbnail
             
+            # This is a hook that everyone should allow to go up the full chain.
+            self.before_export_publish(publisher, **kwargs)
+            
+            # Completely overridable by children.
             self.export_publish(publisher, **kwargs)
+            
             return publisher
+    
+    def before_export_publish(self, publisher, **kwargs):
+        pass
     
     def export_publish(self, publisher, **kwargs):
         """Perform an export within the context of a publish.
@@ -91,7 +99,7 @@ class Exporter(object):
         :param kwargs: Passed to :meth:`export_publish`.
         
         """
-        self.export(publisher.directory, None, **kwargs)
+        return self.export(publisher.directory, None, **kwargs)
     
     def export(self, directory, path, **kwargs):
         """Do the work of exporting. Must be implemented in subclasses.
