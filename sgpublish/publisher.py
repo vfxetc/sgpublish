@@ -174,15 +174,18 @@ class Publisher(object):
             
             executor = concurrent.futures.ThreadPoolExecutor(4)
             
+            updates = {
+                'sg_version': self._version,
+                'sg_path': self.path or self._directory,
+                'description': self.description or '',
+            }
+            self.entity.update(updates)
+            
             # Start the second stage of the publish.
             update_future = executor.submit(self.sgfs.session.update,
                 'PublishEvent',
                 self.entity['id'],
-                {
-                    'sg_version': self._version,
-                    'sg_path': self.path or self._directory,
-                    'description': self.description or '',
-                },
+                updates,
             )
             
             # Start the thumbnail upload.
@@ -208,7 +211,7 @@ class Publisher(object):
             if self._parent:
                 our_metadata['parent'] = self._parent.minimal
             if self.thumbnail_path:
-                our_metadata['thumbnail'] = thumbnail_name
+                our_metadata['thumbnail'] = thumbnail_name.encode('utf8') if isinstance(thumbnail_name, unicode) else thumbnail_name
             full_metadata = dict(self.metadata)
             full_metadata['sgpublish'] = our_metadata
             self.sgfs.tag_directory_with_entity(self._directory, self.entity, full_metadata)
