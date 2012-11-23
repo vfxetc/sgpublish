@@ -9,6 +9,7 @@ import tempfile
 import os
 import re
 import glob
+import functools
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -72,7 +73,7 @@ class Dialog(QtGui.QDialog):
         self._setup_ui()
     
     def _setup_ui(self):
-        
+
         self.setWindowTitle('Scene Publisher')
         self.setLayout(QtGui.QVBoxLayout())
         
@@ -88,6 +89,37 @@ class Dialog(QtGui.QDialog):
         button = QtGui.QPushButton('Publish')
         button.clicked.connect(self._on_submit)
         self.layout().addLayout(ui_utils.vbox(button))
+        
+        self._publish_widget.beforePlayblast.connect(self._before_playblast)
+        self._publish_widget.afterPlayblast.connect(self._after_playblast)
+        self._publish_widget.viewerClosed.connect(self._after_viewer_closed)
+        
+        self._msgbox = None
+    
+    def _before_playblast(self):
+        self.hide()
+        self.setEnabled(False)
+    
+    def _after_playblast(self):
+
+        self.show()
+        
+        self._msgbox = msgbox = QtGui.QMessageBox(
+            QtGui.QMessageBox.Warning,
+            'Close Playblast Viewer',
+            'Please close the playblast viewer before publishing.',
+            QtGui.QMessageBox.Ignore,
+            self
+        )
+        msgbox.setWindowModality(Qt.WindowModal)
+        msgbox.buttonClicked.connect(self._after_viewer_closed)
+        msgbox.show()
+    
+    def _after_viewer_closed(self, *args):
+        self.setEnabled(True)
+        if self._msgbox:
+            self._msgbox.hide()
+            self._msgbox = None
     
     def _on_submit(self, *args):
         

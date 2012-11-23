@@ -2,8 +2,9 @@ import contextlib
 import os
 import tempfile
 import subprocess
+import functools
 
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 
 from maya import cmds
 
@@ -92,6 +93,10 @@ def playblast(**kwargs):
     
 class Widget(Base):
     
+    beforePlayblast = QtCore.pyqtSignal()
+    afterPlayblast = QtCore.pyqtSignal()
+    viewerClosed = QtCore.pyqtSignal()
+    
     def _setup_ui(self):
         
         super(Widget, self)._setup_ui()
@@ -136,28 +141,38 @@ class Widget(Base):
             self._movie_path.setText(res[0])
     
     def _on_playblast(self):
-
+        
         minTime = cmds.playbackOptions(q=True, minTime=True)
         maxTime = cmds.playbackOptions(q=True, maxTime=True)
         frame_rate = cmds.playbackOptions(q=True, framesPerSecond=True)
         
         directory = tempfile.mkdtemp('playblast.')
-        playblast(
-            startTime=minTime,
-            endTime=maxTime,
-            format='image',
-            viewer=False,
-            p=100,
-            framePadding=4,
-            filename=directory + '/frame',
-        )
+        self.beforePlayblast.emit()
+        try:
+            playblast(
+                startTime=minTime,
+                endTime=maxTime,
+                format='image',
+                viewer=False,
+                p=100,
+                framePadding=4,
+                filename=directory + '/frame',
+            )
+        finally:
+            self.afterPlayblast.emit()
         
-        # Playblasting puts us behind the main window.
-        self.raise_()
-        
-        # Eventually wait for this to close.
-        proc = subprocess.Popen(['mplay', '-T', '-R', '-r', str(int(frame_rate)), directory + '/frame.$F4.jpg'])
+        # Open a viewer, and wait for it to close.
+        proc = subprocess.Popen(['mplay', '-C', '-T', '-R', '-r', str(int(frame_rate)), directory + '/frame.$F4.jpg'])
+        self._player_waiter = thread = QtCore.QThread()
+        thread.run = functools.partial(self._wait_for_player, proc)
+        thread.start()
         
         self._movie_path.setText(directory + '/frame.####.jpg')
+        
+    
+    def _wait_for_player(self, proc):
+        proc.wait()
+        self.viewerClosed.emit()
+        
         
         

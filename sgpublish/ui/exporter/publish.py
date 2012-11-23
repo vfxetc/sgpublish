@@ -106,7 +106,7 @@ class Widget(QtGui.QWidget):
         self._movie_browse = QtGui.QPushButton(ui_utils.icon('silk/folder', size=12, as_icon=True), "Browse")
         self._movie_browse.clicked.connect(self._on_movie_browse)
         self._movie_layout = hbox(self._movie_path, self._movie_browse)
-        self.layout().addLayout(vbox("Path to Movie or Frames", self._movie_layout, spacing=4))
+        self.layout().addLayout(vbox("Path to Movie or Frames (to be copied to publish)", self._movie_layout, spacing=4))
         self._movie_browse.setFixedHeight(self._movie_path.sizeHint().height())
         self._movie_browse.setFixedWidth(self._movie_browse.sizeHint().width() + 2)
         
