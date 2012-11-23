@@ -5,6 +5,7 @@ import subprocess
 import functools
 
 from PyQt4 import QtGui, QtCore
+Qt = QtCore.Qt
 
 from maya import cmds
 
@@ -109,6 +110,8 @@ class Widget(Base):
         
         # For dev only!
         self._playblast.setEnabled('KS_DEV_ARGS' in os.environ)
+        
+        self._msgbox = None
     
     def take_full_screenshot(self):
         
@@ -167,12 +170,27 @@ class Widget(Base):
         thread.run = functools.partial(self._wait_for_player, proc)
         thread.start()
         
-        self._movie_path.setText(directory + '/frame.####.jpg')
+        self._msgbox = msgbox = QtGui.QMessageBox(
+            QtGui.QMessageBox.Warning,
+            'Close Playblast Viewer',
+            'Please close the playblast viewer before publishing.',
+            QtGui.QMessageBox.Ignore,
+            self
+        )
+        msgbox.setWindowModality(Qt.WindowModal)
+        msgbox.buttonClicked.connect(msgbox.hide)
+        msgbox.show()
         
+        self._movie_path.setText(directory + '/frame.####.jpg')
     
     def _wait_for_player(self, proc):
         proc.wait()
         self.viewerClosed.emit()
+        if self._msgbox:
+            self._msgbox.hide()
+            self._msgbox = None
+            
+    
         
         
         

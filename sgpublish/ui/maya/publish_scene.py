@@ -92,34 +92,14 @@ class Dialog(QtGui.QDialog):
         
         self._publish_widget.beforePlayblast.connect(self._before_playblast)
         self._publish_widget.afterPlayblast.connect(self._after_playblast)
-        self._publish_widget.viewerClosed.connect(self._after_viewer_closed)
         
         self._msgbox = None
     
     def _before_playblast(self):
         self.hide()
-        self.setEnabled(False)
     
     def _after_playblast(self):
-
         self.show()
-        
-        self._msgbox = msgbox = QtGui.QMessageBox(
-            QtGui.QMessageBox.Warning,
-            'Close Playblast Viewer',
-            'Please close the playblast viewer before publishing.',
-            QtGui.QMessageBox.Ignore,
-            self
-        )
-        msgbox.setWindowModality(Qt.WindowModal)
-        msgbox.buttonClicked.connect(self._after_viewer_closed)
-        msgbox.show()
-    
-    def _after_viewer_closed(self, *args):
-        self.setEnabled(True)
-        if self._msgbox:
-            self._msgbox.hide()
-            self._msgbox = None
     
     def _on_submit(self, *args):
         
