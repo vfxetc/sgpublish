@@ -53,6 +53,9 @@ class Dialog(QtGui.QDialog):
                 print '# Skipping', path
             publish = publishes[0]
             
+            # Some do not have all of these.
+            publish.fetch(('sg_link', 'code', 'sg_type', 'sg_version'))
+            
             siblings = sgfs.session.find('PublishEvent', [
                 ('sg_link', 'is', publish['sg_link']),
                 ('code', 'is', publish['code']),
