@@ -51,10 +51,9 @@ class Dialog(QtGui.QDialog):
             publishes = sgfs.entities_from_path(path)
             if not publishes or publishes[0]['type'] != 'PublishEvent':
                 print '# Skipping', path
-            publish = publishes[0]
+                continue
             
-            # Some do not have all of these.
-            publish.fetch(('sg_link', 'code', 'sg_type', 'sg_version'))
+            publish = publishes[0]
             
             siblings = sgfs.session.find('PublishEvent', [
                 ('sg_link', 'is', publish['sg_link']),
