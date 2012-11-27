@@ -273,6 +273,24 @@ class Widget(QtGui.QWidget):
     def thumbnail_path(self):
         return self._thumbnail_path
     
+    def _path_is_image(self, path):
+        if os.path.splitext(path)[1][1:].lower() in (
+            'jpg', 'jpeg', 'tif', 'tiff', 'exr',
+        ):
+            return path
+    
+    def frames_path(self):
+        path = str(self._movie_path.text())
+        if path and self._path_is_image(path):
+            return path
+        return None
+    
+    def movie_path(self):
+        path = str(self._movie_path.text())
+        if path and not self._path_is_image(path):
+            return path
+        return None
+    
     def export(self, **kwargs):
         
         data = self._task_combo.currentData()
@@ -289,6 +307,8 @@ class Widget(QtGui.QWidget):
             description=self.description(),
             version=self.version(),
             thumbnail_path=self.thumbnail_path(),
+            frames_path=self.frames_path(),
+            movie_path=self.movie_path(),
             export_kwargs=kwargs,
         )
 

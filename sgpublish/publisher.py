@@ -1,11 +1,12 @@
 import os
 from subprocess import check_call
 import datetime
+import itertools
 
 import concurrent.futures
 
 from sgfs import SGFS
-from sgsession import Entity
+from sgsession import Session, Entity
 
 from . import utils
 
@@ -63,6 +64,7 @@ class Publisher(object):
     
     def __init__(self, link, type, name, sgfs=None,
         created_by=None,
+        create_version=False,
         description=None,
         directory=None,
         frames_path=None,
@@ -76,28 +78,29 @@ class Publisher(object):
         self.sgfs = sgfs or (SGFS(session=link.session) if isinstance(link, Entity) else SGFS())
         
         self.created_by = created_by or self.sgfs.session.guess_user()
-        self.description = str(description)
-        self.frames_path = frames_path
+        self.create_version = bool(create_version)
+        self.description = str(description or '')
+        self.frames_path = str(frames_path or '')
         self.link = self.sgfs.session.merge(link)
-        self.movie_path = movie_path
-        self.movie_url = movie_url
+        self.movie_path = str(movie_path or '')
+        self.movie_url = str(movie_url or '') or None
         self.name = str(name)
-        self.path = path
-        self.thumbnail_path = thumbnail_path
+        self.path = str(path or '')
+        self.thumbnail_path = str(thumbnail_path or '')
         self.type = str(type)
         
         # First stage of the publish: create an "empty" PublishEvent.
         self.entity = self.sgfs.session.create('PublishEvent', {
-            'sg_link': link,
-            'project': self.link.project(),
-            'sg_type': self.type,
-            'description': self.description,
             'code': self.name,
-            'sg_version': 0, # Signifies that this is "empty".
             'created_by': self.created_by,
+            'description': self.description or '',
+            'project': self.link.project(),
+            'sg_link': link,
             'sg_path_to_frames': self.frames_path,
             'sg_path_to_movie': self.movie_path,
             'sg_qt': self.movie_url,
+            'sg_type': self.type,
+            'sg_version': 0, # Signifies that this is "empty".
         })
         
         # Determine the version number by looking at the existing publishes.
@@ -159,7 +162,22 @@ class Publisher(object):
         """The path into which all files must be placed."""
         return self._directory
     
-    def add_file(self, src_path, dst_name=None):
+    def isabs(self, dst_name):
+        """Is the given path within the publish directory?"""
+        return dst_name.startswith(self._directory)
+    
+    def abspath(self, dst_name):
+        """Get the abspath of the given name within the publish directory.
+        
+        If it is already within the directory, then makes no change to the path.
+        
+        """
+        if self.isabs(dst_name):
+            return dst_name
+        else:
+            return os.path.join(self._directory, dst_name.lstrip('/'))
+    
+    def add_file(self, src_path, dst_name=None, unique=False):
         """Queue a file (or folder) to be copied into the publish.
         
         :param str src_path: The path to copy into the publish.
@@ -167,12 +185,36 @@ class Publisher(object):
         :type dst_name: str or None.
         
         ``dst_name`` will default to the basename of the source path. ``dst_name``
-        will always be treated as relative to the :attr:`.path`, even if it
-        starts with a slash.
+        will be treated as relative to the :attr:`.path` if it is not contained
+        withing the :attr:`.directory`.
         
         """
         dst_name = dst_name or os.path.basename(src_path)
-        self._files.append((src_path, dst_name))
+        if unique:
+            dst_name = self.unique_name(dst_name)
+        elif self.file_exists(dst_name):
+            raise ValueError('the file already exists in the publish')
+        dst_path = self.abspath(dst_name)
+        self._files.append((src_path, dst_path))
+        return dst_path
+    
+    def file_exists(self, dst_name):
+        """If added via :meth:`.add_file`, would it clash with an existing file?"""
+        dst_path = self.abspath(dst_name)
+        return os.path.exists(dst_path) or any(x[1] == dst_path for x in self._files)
+    
+    def unique_name(self, dst_name):
+        """Append numbers to the end of the name if nessesary to make the name
+        unique for :meth:`.add_file`.
+        
+        """
+        if not self.file_exists(dst_name):
+            return dst_name
+        base, ext = os.path.splitext(dst_name)
+        for i in itertools.counter(1):
+            unique_name = '%s_%d%s' % (base, i, ext)
+            if not self.file_exists(unique_name):
+                return unique_name
     
     def commit(self):
         
@@ -188,11 +230,28 @@ class Publisher(object):
             
             executor = concurrent.futures.ThreadPoolExecutor(4)
             
+            # Normalize attributes.
+            self.description = str(self.description or '')
+            self.frames_path = str(self.frames_path or '')
+            self.movie_path = str(self.movie_path or '')
+            self.movie_url = str(self.movie_url or '') or None
+            self.path = str(self.path or self.directory or '')
+            self.thumbnail_path = str(self.thumbnail_path or '')
+        
             updates = {
+            
+                # Allow updates to all metadata, except name, link, type, and author.
+                'description': self.description,
+                'sg_path': self.path,
+                'sg_path_to_frames': self.frames_path,
+                'sg_path_to_movie': self.movie_path,
+                'sg_qt': self.movie_url,
+                
                 'sg_version': self._version,
-                'sg_path': self.path or self._directory,
-                'description': self.description or '',
+            
             }
+            
+            # Force the updated into the entity for the tag.
             self.entity.update(updates)
             
             # Start the second stage of the publish.
@@ -201,20 +260,25 @@ class Publisher(object):
                 self.entity['id'],
                 updates,
             )
-            
-            # Start the thumbnail upload.
+                
+            # Start the thumbnail upload in the background.
             if self.thumbnail_path:
                 thumbnail_future = executor.submit(self.sgfs.session.upload_thumbnail,
-                    'PublishEvent',
+                    self.entity['type'],
                     self.entity['id'],
                     self.thumbnail_path,
                 )
-                thumbnail_name = '.sgpublish.thumbnail' + os.path.splitext(self.thumbnail_path)[1]
-                self.add_file(self.thumbnail_path, thumbnail_name)
+                
+                # Schedule it for copy.
+                thumbnail_name = 'thumbnail' + os.path.splitext(self.thumbnail_path)[1]
+                thumbnail_name = self.add_file(
+                    self.thumbnail_path,
+                    thumbnail_name,
+                    unique=True
+                )
             
-            # Copy in the new files.
-            for src_path, dst_name in self._files:
-                dst_path = os.path.join(self._directory, dst_name.lstrip('/'))
+            # Copy in the scheduled files.
+            for src_path, dst_path in self._files:
                 dst_dir = os.path.dirname(dst_path)
                 if not os.path.exists(dst_dir):
                     os.makedirs(dst_dir)
@@ -233,6 +297,7 @@ class Publisher(object):
             # Set permissions. I would like to own it by root, but we need root
             # to do that. Oh well...
             check_call(['chmod', '-R', 'a=rX', self._directory])
+            check_call(['chmod', 'a+t,u+w', self._directory])
             
             # Wait for the Shotgun updates.
             update_future.result()
@@ -241,15 +306,6 @@ class Publisher(object):
         
         # Delete the publish on any error.
         except:
-            
-            # Wait for other Shotgun calls first.
-            try:
-                update_future.result()
-                if thumbnail_future:
-                    thumbnail_future.result()
-            except:
-                pass
-            
             self._delete()
             raise
         
@@ -266,5 +322,6 @@ class Publisher(object):
             self._delete()
             return
         self.commit()
-        
+
+
         

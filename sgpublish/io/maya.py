@@ -39,4 +39,4 @@ class Exporter(base.Exporter):
             'version': maya_version,
             'references': [str(x) for x in cmds.file(q=True, reference=True) or []],
         }
-        
+

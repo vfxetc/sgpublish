@@ -27,9 +27,9 @@ from ..exporter.maya import publish as ui_publish
 
 __also_reload__ = [
     '...io.maya',
-    '..utils',
     '...utils',
     '..exporter.maya.publish',
+    '..utils',
     '..utils',
 ]
 

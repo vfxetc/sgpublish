@@ -1,8 +1,12 @@
 import os
 
 from ..publisher import Publisher
+from . import ffmpeg
 
-__also_reload__ = ['..publisher']
+__also_reload__ = [
+    '..publisher',
+    '.ffmpeg',
+]
 
 
 class Exporter(object):
@@ -73,7 +77,13 @@ class Exporter(object):
             # This is a hook that everyone should allow to go up the full chain.
             self.before_export_publish(publisher, **export_kwargs)
             
-            # Completely overridable by children.
+            frames_path = self.frames_for_movie(publisher, **export_kwargs)
+            if frames_path:
+                movie_path = self.make_movie(publisher, frames, **export_kwargs)
+                if movie:
+                    publisher.movie_path = movie_path
+            
+            # Completely overridable by children (without calling super).
             self.export_publish(publisher, **export_kwargs)
             
             return publisher
@@ -81,6 +91,29 @@ class Exporter(object):
     def before_export_publish(self, publisher, **kwargs):
         pass
     
+    def _path_is_image(self, path):
+        if os.path.splitext(path)[1][1:].lower() in (
+            'jpg', 'jpeg', 'tif', 'tiff', 'exr',
+        ):
+            return path
+    
+    def frames_for_movie(self, publisher, **kwargs):
+        if self._path_is_image(publisher.movie_path):
+            return publisher.movie_path
+    
+    def movie_path_from_frames(self, frames_path, **kwargs):
+        return os.path.join(os.path.basename(frames), 'movie.mov')
+    
+    def make_movie(self, publisher, frames_path, **kwargs):
+        movie_path = self.movie_path_from_frames(frames_path, **kwargs)
+        with uifutures.Executor() as executor:
+            executor.submit_ext(
+                ffmpeg.quicktime_from_glob,
+                args=(movie_path, frames_path),
+                name='Create QuickTime for %s v%04d' % (publisher.name, publisher.version),
+            )
+        return movie_path
+        
     def export_publish(self, publisher, **kwargs):
         """Perform an export within the context of a publish.
         

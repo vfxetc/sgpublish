@@ -18,11 +18,12 @@ class Dialog(QtGui.QDialog):
         super(Dialog, self).__init__()
         self._setup_ui()
         self._populate_references()
+        
+        self.setMinimumWidth(self._tree.viewport().width() + 120) # 120 for combos
     
     def _setup_ui(self):
         
         self.setWindowTitle("Update References")
-        self.setMinimumWidth(1000)
         self.setLayout(QtGui.QVBoxLayout())
         
         self._tree = QtGui.QTreeWidget()
