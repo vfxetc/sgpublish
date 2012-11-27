@@ -6,6 +6,7 @@ import functools
 import glob
 import time
 import datetime
+import re
 
 from PyQt4 import QtGui, QtCore
 Qt = QtCore.Qt
@@ -177,19 +178,20 @@ class Widget(Base):
                 viewer=False,
                 p=100,
                 framePadding=4,
-                filename=directory + '/frame.',
+                filename=directory + '/frame',
             )
         finally:
             self.afterPlayblast.emit()
         
-        self.setFrames(directory + '/frame.*.jpg')
+        self.setFrames(directory + '/frame.####.jpg')
     
     def setFrames(self, path):
 
         frame_rate = cmds.playbackOptions(q=True, framesPerSecond=True)
         
         # Open a viewer, and wait for it to close.
-        proc = subprocess.Popen(['mplay', '-C', '-T', '-R', '-r', str(int(frame_rate)), path])
+        houdini_path = re.sub(r'(#+)', lambda m: '$F%d' % len(m.group(1)), path)
+        proc = subprocess.Popen(['mplay', '-C', '-T', '-R', '-r', str(int(frame_rate)), houdini_path])
         self._player_waiter = thread = QtCore.QThread()
         thread.run = functools.partial(self._wait_for_player, proc)
         thread.start()

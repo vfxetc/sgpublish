@@ -1,5 +1,7 @@
 import os
 
+import uifutures
+
 from ..publisher import Publisher
 from . import ffmpeg
 
@@ -79,8 +81,8 @@ class Exporter(object):
             
             frames_path = self.frames_for_movie(publisher, **export_kwargs)
             if frames_path:
-                movie_path = self.make_movie(publisher, frames, **export_kwargs)
-                if movie:
+                movie_path = self.make_movie(publisher, frames_path, **export_kwargs)
+                if movie_path:
                     publisher.movie_path = movie_path
             
             # Completely overridable by children (without calling super).
@@ -102,7 +104,7 @@ class Exporter(object):
             return publisher.movie_path
     
     def movie_path_from_frames(self, frames_path, **kwargs):
-        return os.path.join(os.path.basename(frames), 'movie.mov')
+        return os.path.join(os.path.dirname(frames_path), 'movie.mov')
     
     def make_movie(self, publisher, frames_path, **kwargs):
         movie_path = self.movie_path_from_frames(frames_path, **kwargs)

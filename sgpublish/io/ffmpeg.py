@@ -6,10 +6,14 @@ import threading
 import multiprocessing
 import multiprocessing.dummy
 import glob
+import re
+import sys
 
 import OpenEXR
 
 from uifutures.worker import set_progress, notify
+
+import ks.core.project
 
 __also_reload__ = ['uifutures.worker']
 
@@ -240,31 +244,19 @@ class FFmpeg(object):
 
 
 def quicktime_from_glob(mov_path, pattern, lut=None):
-
-    f = FFmpeg()
-    f.quicktime_from_image_sequence(sorted(glob.glob(pattern)), mov_path, lut)
+    print '# Creating', mov_path
+    print '# out of', pattern
+    
+    if '#' in pattern:
+        pattern = re.sub('#+', '*', pattern)
+    if '*' in pattern:
+        pattern = sorted(glob.glob(pattern))[0]
+    sequence = ks.core.project.get_sequence(pattern)
+    FFmpeg().quicktime_from_image_sequence(sequence, mov_path, lut)
 
 
 if __name__ == '__main__':
-    
-    import project
-    import time
-    
-    os.environ['MAGICK_THREAD_LIMIT'] = '4'
-    
-    #filein = '/Volumes/VFX/Projects/Santa_Pups/SEQ/PV/PV_997_001/Plates/DPX_action/BAXTER_REF_001.0001.dpx'
-    
-    filein = '/Volumes/VFX/Projects/Santa_Pups/SEQ/NP/NP_003_001/3D/images/Lighting_Renders/NP_003_001_Light_v0004_r0003/master/NP_003_001_Light_v0004_r0003.master.0001.exr'
-    lut = '/home/mreid/key_local_tool_development/key_base/python/quicktime/luts/Linear_to_sRgb.png'
-    d = project.get_sequence(filein)
-    
-    f = FFmpeg()
-    
-    start = time.time()
-    f.quicktime_from_image_sequence(d[:100], 'test_lut.mov',lut)
-    
-    print 'time', time.time()-start,'secs'
-    
-   #quicktime_from_image_sequence(d,'test.mov')
-    
-    
+    quicktime_from_glob(sys.argv[1], sys.argv[2])
+
+
+

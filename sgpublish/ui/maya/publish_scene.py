@@ -48,8 +48,13 @@ class SceneExporter(io_maya.Exporter):
         kwargs.setdefault('publish_type', 'maya_scene')
         
         super(SceneExporter, self).__init__(**kwargs)
+    
+    def before_export_publish(self, publisher, **kwargs):
+        # Playblasts should be converted into frames.
+        publisher.movie_path = publisher.movie_path or publisher.frames_path
+        super(SceneExporter, self).before_export_publish(publisher, **kwargs)
         
-    def export_publish(self, publisher):
+    def export_publish(self, publisher, **kwargs):
         
         # Save the file into the directory.
         src_path = cmds.file(q=True, sceneName=True)
@@ -125,7 +130,12 @@ class Dialog(QtGui.QDialog):
         cmds.file(rename=new_path)
         # cmds.file(save=True, type=maya_type)
         
-        ui_utils.announce_publish_success(publisher)
+        ui_utils.announce_publish_success(
+            publisher,
+            message="Version {publisher.version} of \"{publisher.name}\" has been published\n"
+                "and your scene has been versioned up."
+        )
+        
         self.close()
 
 
