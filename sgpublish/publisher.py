@@ -83,7 +83,7 @@ class Publisher(object):
         self.frames_path = str(frames_path or '')
         self.link = self.sgfs.session.merge(link)
         self.movie_path = str(movie_path or '')
-        self.movie_url = str(movie_url or '') or None
+        self.movie_url = self._conform_url(movie_url)
         self.name = str(name)
         self.path = str(path or '')
         self.thumbnail_path = str(thumbnail_path or '')
@@ -166,6 +166,15 @@ class Publisher(object):
         """Is the given path within the publish directory?"""
         return dst_name.startswith(self._directory)
     
+    def _conform_url(self, url):
+        if url is None:
+            return
+        if isinstance(url, dict):
+            return url
+        if isinstance(url, basestring):
+            return {'url': url}
+        return {'url': str(url)}
+        
     def abspath(self, dst_name):
         """Get the abspath of the given name within the publish directory.
         
@@ -234,7 +243,7 @@ class Publisher(object):
             self.description = str(self.description or '')
             self.frames_path = str(self.frames_path or '')
             self.movie_path = str(self.movie_path or '')
-            self.movie_url = str(self.movie_url or '') or None
+            self.movie_url = self._conform_url(self.movie_url)
             self.path = str(self.path or self.directory or '')
             self.thumbnail_path = str(self.thumbnail_path or '')
         
@@ -322,6 +331,26 @@ class Publisher(object):
             self._delete()
             return
         self.commit()
+    
+    def promote_to_version(self, **kwargs):
+        
+        print 'created by', self.created_by
+        
+        fields = {
+            'code': '%s_v%04d' % (self.name, self.version),
+            'created_by': self.created_by,
+            'description': self.description or '',
+            'entity': self.link.parent(),
+            'project': self.link.project(),
+            'sg_path_to_frames': self.frames_path,
+            'sg_path_to_movie': self.movie_path,
+            'sg_qt': self.movie_url,
+            'user': self.created_by, # "Artist"
+        }
+        
+        fields.update(kwargs)
+        
+        return self.sgfs.session.create('Version', fields)
 
 
         

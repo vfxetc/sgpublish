@@ -1,13 +1,13 @@
-import subprocess
-import os
-import time
-import Queue
-import threading
+import glob
 import multiprocessing
 import multiprocessing.dummy
-import glob
+import os
+import Queue
 import re
+import subprocess
 import sys
+import threading
+import time
 
 import OpenEXR
 
@@ -244,14 +244,18 @@ class FFmpeg(object):
 
 
 def quicktime_from_glob(mov_path, pattern, lut=None):
-    print '# Creating', mov_path
-    print '# out of', pattern
     
+    # Get an actual file name out of a pattern.
     if '#' in pattern:
         pattern = re.sub('#+', '*', pattern)
     if '*' in pattern:
         pattern = sorted(glob.glob(pattern))[0]
+    
+    # Read in the sequence.
+    # TODO: Rebuild this functionality.
     sequence = ks.core.project.get_sequence(pattern)
+    
+    # Do the conversion.
     FFmpeg().quicktime_from_image_sequence(sequence, mov_path, lut)
 
 

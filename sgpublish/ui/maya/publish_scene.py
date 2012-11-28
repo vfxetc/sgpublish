@@ -10,6 +10,8 @@ import os
 import re
 import glob
 import functools
+import datetime
+import itertools
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -50,9 +52,44 @@ class SceneExporter(io_maya.Exporter):
         super(SceneExporter, self).__init__(**kwargs)
     
     def before_export_publish(self, publisher, **kwargs):
+        
         # Playblasts should be converted into frames.
-        publisher.movie_path = publisher.movie_path or publisher.frames_path
+        if publisher.frames_path and not publisher.movie_path:
+            publisher.movie_path = publisher.frames_path
+            publisher.frames_path = None
+        
         super(SceneExporter, self).before_export_publish(publisher, **kwargs)
+    
+    def movie_path_from_frames(self, publisher, frames_path, **kwargs):
+        
+        # Put it in the dailies folder.
+        # TODO: Do this with SGFS templates.
+        project_root = publisher.sgfs.path_for_entity(publisher.link.project())
+        path = os.path.join(
+            project_root,
+            'VFX_Dailies',
+            datetime.datetime.now().strftime('%Y-%m-%d'),
+            publisher.link.fetch('step.Step.code') or 'Unknown',
+            publisher.name + '_v%04d.mov' % publisher.version,
+        )
+        
+        # Make it unique.
+        if os.path.exists(path):
+            base, ext = os.path.splitext(path)
+            for i in itertools.counter(1):
+                path = '%s_%04d%s' % (base, i, ext)
+                if not os.path.exists(path):
+                    break
+        
+        # Assert the directory exists.
+        dir_ = os.path.dirname(path)
+        if not os.path.exists(dir_):
+            os.makedirs(dir_)
+        
+        return path
+    
+    def movie_url_from_path(self, publisher, movie_path, **kwargs):
+        return 'http://keyweb/' + os.path.abspath(movie_path).lstrip('/')
         
     def export_publish(self, publisher, **kwargs):
         

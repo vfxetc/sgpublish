@@ -39,4 +39,13 @@ class Exporter(base.Exporter):
             'version': maya_version,
             'references': [str(x) for x in cmds.file(q=True, reference=True) or []],
         }
+    
+    def promotion_fields(self, publisher, **kwargs):
+        start = cmds.playbackOptions(query=True, minTime=True)
+        end = cmds.playbackOptions(query=True, maxTime=True)
+        return {
+            'sg_first_frame': int(start),
+            'sg_last_frame': int(end),
+            'frame_count': int(end - start + 1),
+        }
 

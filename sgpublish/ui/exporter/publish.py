@@ -110,9 +110,13 @@ class Widget(QtGui.QWidget):
         self._movie_browse.setFixedHeight(self._movie_path.sizeHint().height())
         self._movie_browse.setFixedWidth(self._movie_browse.sizeHint().width() + 2)
         
+        self._promote_checkbox = QtGui.QCheckBox("Promote to 'Version' for review")
+        self.layout().addWidget(self._promote_checkbox)
+        
         # For dev only!
         self._movie_path.setEnabled('KS_DEV_ARGS' in os.environ)
         self._movie_browse.setEnabled('KS_DEV_ARGS' in os.environ)
+        self._promote_checkbox.setEnabled('KS_DEV_ARGS' in os.environ)
         
     
     def _fetch_existing_data(self):
@@ -302,7 +306,7 @@ class Widget(QtGui.QWidget):
                 raise ValueError('Could not find SGFS tagged entities')
             task = tasks[0]
         
-        return self._exporter.publish(task,
+        publisher = self._exporter.publish(task,
             name=self.name(),
             description=self.description(),
             version=self.version(),
@@ -311,4 +315,12 @@ class Widget(QtGui.QWidget):
             movie_path=self.movie_path(),
             export_kwargs=kwargs,
         )
+    
+        if self._promote_checkbox.isChecked():
+            promotion_fields = self._exporter.promotion_fields(publisher, **kwargs)
+            print "PROMOTE", promotion_fields
+            publisher.promote_to_version(**promotion_fields)
+        
+        return publisher
+        
 
