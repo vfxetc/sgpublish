@@ -125,8 +125,10 @@ class Publisher(object):
         
         # Generate the publish path.
         if directory is not None:
+            self._directory_supplied = True
             self._directory = os.path.abspath(directory)
         else:
+            self._directory_supplied = False
             self._directory = self.sgfs.path_from_template(link, '%s_publish' % type, dict(
                 publish=self, # For b/c.
                 publisher=self, 
@@ -309,16 +311,6 @@ class Publisher(object):
                     os.makedirs(dst_dir)
                 check_call(['cp', '-rp', src_path, dst_path])
             
-            # Tag the directory.
-            our_metadata = {}
-            if self._parent:
-                our_metadata['parent'] = self._parent.minimal
-            if self.thumbnail_path:
-                our_metadata['thumbnail'] = thumbnail_name.encode('utf8') if isinstance(thumbnail_name, unicode) else thumbnail_name
-            full_metadata = dict(self.metadata)
-            full_metadata['sgpublish'] = our_metadata
-            self.sgfs.tag_directory_with_entity(self._directory, self.entity, full_metadata)
-            
             # Set permissions. I would like to own it by root, but we need root
             # to do that. We also leave the directory writable, but sticky.
             check_call(['chmod', '-R', 'a=rX', self._directory])
@@ -328,28 +320,49 @@ class Publisher(object):
             update_future.result()
             if thumbnail_future:
                 thumbnail_future.result()
+                
+            # Tag the directory. Ideally we would like to do this before the
+            # futures are waited for, but we only want to tag the directory
+            # if everything was successful.
+            our_metadata = {}
+            if self._parent:
+                our_metadata['parent'] = self._parent.minimal
+            if self.thumbnail_path:
+                our_metadata['thumbnail'] = thumbnail_name.encode('utf8') if isinstance(thumbnail_name, unicode) else thumbnail_name
+            full_metadata = dict(self.metadata)
+            full_metadata['sgpublish'] = our_metadata
+            self.sgfs.tag_directory_with_entity(self._directory, self.entity, full_metadata)
         
-        # Delete the publish on any error.
         except:
-            self._delete()
+            self._failed()
             raise
         
     def __enter__(self):
         return self
     
-    def _delete(self):
+    def _failed(self):
+        
+        # Remove the entity's ID.
         id_ = self.entity.pop('id', None)
-        if id_:
-            self.sgfs.session.delete('PublishEvent', id_)
+        if not id_:
+            return
+        
+        # Delete the entity.
+        self.sgfs.session.delete('PublishEvent', id_)
+        
+        # Move the folder aside.
+        if not self._provided_directory and os.path.exists(self._directory):
+            failed_directory = '%s_failed_%d' % (self._directory, id_)
+            check_call(['mv', self._directory, failed_directory])
+            self._directory = failed_directory
     
     def __exit__(self, *exc_info):
         if exc_info and exc_info[0] is not None:
-            self._delete()
+            self._failed()
             return
         self.commit()
     
-    def promote_to_version(self, **kwargs):
-        
+    def promote_for_review(self, **kwargs):
         
         fields = {
             'code': '%s_v%04d' % (self.name, self.version),
@@ -362,10 +375,14 @@ class Publisher(object):
             'sg_qt': self.movie_url,
             'user': self.created_by, # "Artist"
         }
-        
         fields.update(kwargs)
         
-        return self.sgfs.session.create('Version', fields)
+        entity = self.sgfs.session.create('Version', fields)
+        
+        if self.thumbnail_path:
+            self.sgfs.session.share_thumbnail(entities=[entity.minimal], source_entity=self.entity.minimal)
+            
+        return entity
 
 
         

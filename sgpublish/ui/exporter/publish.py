@@ -37,6 +37,8 @@ class Widget(QtGui.QWidget):
         
         self._exporter = exporter
         
+        self._existing_names = set()
+        
         basename = os.path.basename(exporter.filename_hint)
         basename = os.path.splitext(basename)[0]
         self._basename = re.sub(r'_*[rv]\d+', '', basename)
@@ -73,7 +75,6 @@ class Widget(QtGui.QWidget):
         self._version_spinbox.setMaximum(9999)
         self._version_spinbox.valueChanged.connect(self._on_version_changed)
         self._version_warning_issued = False
-        
         
         self.layout().addLayout(hbox(
             vbox("Name", self._name_field),
@@ -118,7 +119,6 @@ class Widget(QtGui.QWidget):
         self._movie_browse.setEnabled('KS_DEV_ARGS' in os.environ)
         self._promote_checkbox.setEnabled('KS_DEV_ARGS' in os.environ)
         
-    
     def _fetch_existing_data(self):
         try:
             sgfs = SGFS()
@@ -131,7 +131,8 @@ class Widget(QtGui.QWidget):
                 'PublishEvent',
                 [
                     ('sg_link.Task.id', 'in') + tuple(x['id'] for x in tasks),
-                    ('sg_type', 'is', self._exporter.publish_type)
+                    ('sg_type', 'is', self._exporter.publish_type),
+                    ('sg_version', 'greater_than', 0), # Skipped failures.
                 ], [
                     'code',
                     'sg_version'
@@ -151,6 +152,8 @@ class Widget(QtGui.QWidget):
         history = self._exporter.get_previous_publish_ids()
         
         select = None
+        
+        self._existing_names.update(p['code'] for p in publishes)
         
         for t_i, task in enumerate(tasks):
             name_to_version = {}
@@ -295,7 +298,36 @@ class Widget(QtGui.QWidget):
             return path
         return None
     
+    def safety_check(self, **kwargs):
+        
+        # Colliding names.
+        data = self._name_combo.currentData()
+        if 'name' not in data and str(self._name_field.text()) in self._existing_names:
+            QtGui.QMessageBox.critical(self,
+                "Name Collision",
+                "You cannot create a new stream with the same name as an"
+                " existing one. Please select the existing stream or enter a"
+                " unique name.",
+            )
+            # Fatal.
+            return False
+        
+        # Promoting to version without a movie.
+        if self._promote_checkbox.isChecked() and not (self.frames_path() or self.movie_path()):
+            QtGui.QMessageBox.critical(self,
+                "Review Version Without Movie",
+                "You cannot promote a publish for review without frames or a"
+                " movie.",
+            )
+            # Fatal.
+            return False
+        
+        return True
+        
     def export(self, **kwargs):
+        
+        if not self.safety_check(**kwargs):
+            return
         
         data = self._task_combo.currentData()
         task = data.get('task')
@@ -319,7 +351,7 @@ class Widget(QtGui.QWidget):
         if self._promote_checkbox.isChecked():
             promotion_fields = self._exporter.promotion_fields(publisher, **kwargs)
             print "PROMOTE", promotion_fields
-            publisher.promote_to_version(**promotion_fields)
+            publisher.promote_for_review(**promotion_fields)
         
         return publisher
         

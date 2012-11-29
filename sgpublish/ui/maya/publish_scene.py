@@ -115,8 +115,29 @@ class SceneExporter(io_maya.Exporter):
             }
             publisher.frames_path = None
         
-
-
+class PublishWidget(ui_publish.Widget):
+    
+    def safety_check(self, **kwargs):
+        
+        if not super(PublishWidget, self).safety_check(**kwargs):
+            return False
+        
+        # Make sure they want to proceed if there are changes to the file.
+        if cmds.file(q=True, modified=True):
+            res = QtGui.QMessageBox.warning(self,
+                "Unsaved Changes",
+                "Would you like to save your changes before publishing this"
+                " file? The publish will have the changes either way.",
+                QtGui.QMessageBox.Save | QtGui.QMessageBox.No | QtGui.QMessageBox.Cancel,
+                QtGui.QMessageBox.Save
+            )
+            if res & QtGui.QMessageBox.Cancel:
+                return False
+            if res & QtGui.QMessageBox.Save:
+                cmds.file(save=True)
+        
+        return True
+    
 class Dialog(QtGui.QDialog):
     
     def __init__(self, exceptions=None):
@@ -154,21 +175,11 @@ class Dialog(QtGui.QDialog):
     
     def _on_submit(self, *args):
         
-        # Make sure they want to proceed if there are changes to the file.
-        if cmds.file(q=True, modified=True):
-            res = QtGui.QMessageBox.warning(self,
-                "Unsaved Changes",
-                "Would you like to save your changes before publishing this file? The publish will have the changes either way.",
-                QtGui.QMessageBox.Save | QtGui.QMessageBox.No | QtGui.QMessageBox.Cancel,
-                QtGui.QMessageBox.Save
-            )
-            if res & QtGui.QMessageBox.Save:
-                cmds.file(save=True)
-            if res & QtGui.QMessageBox.Cancel:
-                return
-        
-        # DO IT
+        # DO IT.
+        # This runs the safety check.
         publisher = self._publish_widget.export()
+        if not publisher:
+            return
         
         # Version-up the file.
         src_path = cmds.file(q=True, sceneName=True)
@@ -178,8 +189,8 @@ class Dialog(QtGui.QDialog):
         
         ui_utils.announce_publish_success(
             publisher,
-            message="Version {publisher.version} of \"{publisher.name}\" has been published\n"
-                "and your scene has been versioned up."
+            message="Version {publisher.version} of \"{publisher.name}\" has"
+                " been published and your scene has been versioned up."
         )
         
         self.close()
