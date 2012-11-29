@@ -368,8 +368,9 @@ class Publisher(object):
             'code': '%s_v%04d' % (self.name, self.version),
             'created_by': self.created_by,
             'description': self.description or '',
-            'entity': self.link.parent(),
+            'entity': self.link.parent(), # Shot or Asset.
             'project': self.link.project(),
+            'sg_task': self.link,
             'sg_path_to_frames': self.frames_path,
             'sg_path_to_movie': self.movie_path,
             'sg_qt': self.movie_url,
