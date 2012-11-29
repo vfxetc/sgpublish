@@ -159,9 +159,6 @@ class Widget(Base):
         self._playblast.setFixedHeight(self._movie_path.sizeHint().height())
         self._playblast.setFixedWidth(self._playblast.sizeHint().width() + 2)
         
-        # For dev only!
-        self._playblast.setEnabled('KS_DEV_ARGS' in os.environ)
-        
         self._viewer_msgbox = None
         self.viewerClosed.connect(self._on_viewer_closed)
     

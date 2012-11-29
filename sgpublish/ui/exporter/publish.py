@@ -114,11 +114,6 @@ class Widget(QtGui.QWidget):
         self._promote_checkbox = QtGui.QCheckBox("Promote to 'Version' for review")
         self.layout().addWidget(self._promote_checkbox)
         
-        # For dev only!
-        self._movie_path.setEnabled('KS_DEV_ARGS' in os.environ)
-        self._movie_browse.setEnabled('KS_DEV_ARGS' in os.environ)
-        self._promote_checkbox.setEnabled('KS_DEV_ARGS' in os.environ)
-        
     def _fetch_existing_data(self):
         try:
             sgfs = SGFS()
