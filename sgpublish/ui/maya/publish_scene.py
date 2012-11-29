@@ -27,7 +27,8 @@ from .. import utils as ui_utils
 from ... import utils
 from ...io import maya as io_maya
 from ..exporter.maya import publish as ui_publish
-from ..exporter.maya import sound
+from ...io.maya import get_sound_for_frames, get_current_sound
+
 
 __also_reload__ = [
     '...io.maya',
@@ -99,7 +100,7 @@ class SceneExporter(io_maya.Exporter):
             if not os.path.exists(movie_directory):
                 os.makedirs(movie_directory)
             
-            sound_path = sound.get_sound_for_frames(publisher.frames_path) or sound.get_current_sound()
+            sound_path = get_sound_for_frames(publisher.frames_path) or get_current_sound()
             
             # Spawn the job.
             print '# Scheduling make_quicktime to %r from %r' % (movie_path, publisher.frames_path)

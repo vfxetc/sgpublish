@@ -19,11 +19,12 @@ import mayatools.playblast
 
 from ..publish import Widget as Base
 from ... import utils as ui_utils
-from . import sound
+from ....io.maya import get_sound_for_frames, get_current_sound
 
 __also_reload__ = [
     '...utils',
     '..publish',
+    '....io.maya',
     'mayatools.playblast',
     'uifutures',
 ]
@@ -235,7 +236,7 @@ class Widget(Base):
         self._movie_path.setText(path)
         
         # Open a viewer, and wait for it to close.
-        sound_path = sound.get_sound_for_frames(path) or sound.get_current_sound()
+        sound_path = get_sound_for_frames(path) or get_current_sound()
         frame_rate = cmds.playbackOptions(q=True, framesPerSecond=True)
         houdini_style_path = re.sub(r'(#+)', lambda m: '$F%d' % len(m.group(1)), path)
         cmd = ['mplay', '-C', '-T', '-R', '-r', str(int(frame_rate))]
