@@ -73,15 +73,18 @@ class Exporter(base.Exporter):
     def before_export_publish(self, publisher, **kwargs):
         publisher.metadata['maya'] = {
             'version': maya_version,
-            'references': [str(x) for x in cmds.file(q=True, reference=True) or []],
+            'references': [str(x) for x in cmds.file(query=True, reference=True) or []],
+            'sound_path': get_current_sound(),
+            'min_time': cmds.playbackOptions(query=True, minTime=True),
+            'max_time': cmds.playbackOptions(query=True, maxTime=True),
         }
     
     def promotion_fields(self, publisher, **kwargs):
-        start = cmds.playbackOptions(query=True, minTime=True)
-        end = cmds.playbackOptions(query=True, maxTime=True)
+        min_time = cmds.playbackOptions(query=True, minTime=True)
+        max_time = cmds.playbackOptions(query=True, maxTime=True)
         return {
-            'sg_first_frame': int(start),
-            'sg_last_frame': int(end),
-            'frame_count': int(end - start + 1),
+            'sg_first_frame': int(min_time),
+            'sg_last_frame': int(max_time),
+            'frame_count': int(max_time - min_time + 1),
         }
 
