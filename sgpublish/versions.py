@@ -27,6 +27,11 @@ def promote_publish(publish, **kwargs):
         'sg_path_to_movie': publish['sg_path_to_frames'],
         'sg_qt': publish['sg_qt'],
         'user': publish['created_by'], # Artist.
+        
+        # Just because the old "Submit Version" tool had these.
+        'sg_frames_aspect_ratio': 1.0,
+        'sg_movie_aspect_ratio': 1.0,
+        'sg_department': publish.fetch('sg_link.Task.step.Step.code') or 'Daily',
     }
 
     # Look up Maya frame information from the tag.
