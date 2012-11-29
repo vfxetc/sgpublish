@@ -3,11 +3,9 @@ import os
 import uifutures
 
 from ..publisher import Publisher
-from . import ffmpeg
 
 __also_reload__ = [
     '..publisher',
-    '.ffmpeg',
 ]
 
 
@@ -79,18 +77,6 @@ class Exporter(object):
             # This is a hook that everyone should allow to go up the full chain.
             self.before_export_publish(publisher, **export_kwargs)
             
-            # Ask children if there is a set of frames that we should convert
-            # into a quicktime and save on the publisher.
-            frames_path = self.frames_for_movie(publisher, **export_kwargs)
-            if frames_path:
-                movie_path = self.make_movie(publisher, frames_path, **export_kwargs)
-                if movie_path:
-                    publisher.movie_path = movie_path
-            
-            # Ask children for the url for the given movie.
-            if publisher.movie_path and not publisher.movie_url:
-                publisher.movie_url = self.movie_url_from_path(publisher, publisher.movie_path, **export_kwargs)
-            
             # Completely overridable by children (without calling super).
             self.export_publish(publisher, **export_kwargs)
             
@@ -98,32 +84,6 @@ class Exporter(object):
     
     def before_export_publish(self, publisher, **kwargs):
         pass
-    
-    def _path_is_image(self, path):
-        if os.path.splitext(path)[1][1:].lower() in (
-            'jpg', 'jpeg', 'tif', 'tiff', 'exr',
-        ):
-            return path
-    
-    def frames_for_movie(self, publisher, **kwargs):
-        if self._path_is_image(publisher.movie_path):
-            return publisher.movie_path
-    
-    def movie_path_from_frames(self, publisher, frames_path, **kwargs):
-        return os.path.join(os.path.dirname(frames_path), 'movie.mov')
-    
-    def movie_url_from_path(self, publisher, movie_path, **kwargs):
-        return None
-    
-    def make_movie(self, publisher, frames_path, **kwargs):
-        movie_path = self.movie_path_from_frames(publisher, frames_path, **kwargs)
-        with uifutures.Executor() as executor:
-            executor.submit_ext(
-                ffmpeg.quicktime_from_glob,
-                args=(movie_path, frames_path),
-                name='Create QuickTime for %s v%04d' % (publisher.name, publisher.version),
-            )
-        return movie_path
     
     def promotion_fields(self, publisher, **kwargs):
         return {}

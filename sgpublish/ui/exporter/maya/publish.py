@@ -18,13 +18,11 @@ import mayatools.playblast
 
 from ..publish import Widget as Base
 from ... import utils as ui_utils
-from ....io import ffmpeg
 
 __also_reload__ = [
     '...utils',
     '..publish',
     'mayatools.playblast',
-    '....io.ffmpeg',
     'uifutures',
 ]
 

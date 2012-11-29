@@ -20,6 +20,7 @@ Qt = QtCore.Qt
 
 from maya import cmds
 
+import uifutures
 from sgfs import SGFS
 
 from .. import utils as ui_utils
@@ -41,7 +42,8 @@ def basename(src_path=None):
     basename = os.path.splitext(basename)[0]
     basename = re.sub(r'_*[rv]\d+', '', basename)
     return basename
-    
+
+
 class SceneExporter(io_maya.Exporter):
     
     def __init__(self, **kwargs):
@@ -51,46 +53,6 @@ class SceneExporter(io_maya.Exporter):
         
         super(SceneExporter, self).__init__(**kwargs)
     
-    def before_export_publish(self, publisher, **kwargs):
-        
-        # Playblasts should be converted into frames.
-        if publisher.frames_path and not publisher.movie_path:
-            publisher.movie_path = publisher.frames_path
-            publisher.frames_path = None
-        
-        super(SceneExporter, self).before_export_publish(publisher, **kwargs)
-    
-    def movie_path_from_frames(self, publisher, frames_path, **kwargs):
-        
-        # Put it in the dailies folder.
-        # TODO: Do this with SGFS templates.
-        project_root = publisher.sgfs.path_for_entity(publisher.link.project())
-        path = os.path.join(
-            project_root,
-            'VFX_Dailies',
-            datetime.datetime.now().strftime('%Y-%m-%d'),
-            publisher.link.fetch('step.Step.code') or 'Unknown',
-            publisher.name + '_v%04d.mov' % publisher.version,
-        )
-        
-        # Make it unique.
-        if os.path.exists(path):
-            base, ext = os.path.splitext(path)
-            for i in itertools.counter(1):
-                path = '%s_%04d%s' % (base, i, ext)
-                if not os.path.exists(path):
-                    break
-        
-        # Assert the directory exists.
-        dir_ = os.path.dirname(path)
-        if not os.path.exists(dir_):
-            os.makedirs(dir_)
-        
-        return path
-    
-    def movie_url_from_path(self, publisher, movie_path, **kwargs):
-        return 'http://keyweb/' + os.path.abspath(movie_path).lstrip('/')
-        
     def export_publish(self, publisher, **kwargs):
         
         # Save the file into the directory.
@@ -106,6 +68,53 @@ class SceneExporter(io_maya.Exporter):
             
         # Set the primary path.
         publisher.path = dst_path
+        
+        # Playblasts should be converted into frames.
+        if publisher.frames_path and not publisher.movie_path:
+        
+            # Put it in the dailies folder.
+            # TODO: Do this with SGFS templates.
+            project_root = publisher.sgfs.path_for_entity(publisher.link.project())
+            movie_directory = os.path.join(
+                project_root,
+                'VFX_Dailies',
+                datetime.datetime.now().strftime('%Y-%m-%d'),
+                publisher.link.fetch('step.Step.code') or 'Unknown',
+            )
+            movie_path = os.path.join(
+                movie_directory,
+                publisher.name + '_v%04d.mov' % publisher.version,
+            )
+        
+            # Make it unique.
+            if os.path.exists(movie_path):
+                base, ext = os.path.splitext(movie_path)
+                for i in itertools.counter(1):
+                    movie_path = '%s_%04d%s' % (base, i, ext)
+                    if not os.path.exists(movie_path):
+                        break
+            
+            # Make the folder.
+            if not os.path.exists(movie_directory):
+                os.makedirs(movie_directory)
+            
+            # Spawn the job.
+            print '# Scheduling make_quicktime to %r from %r' % (movie_path, publisher.frames_path)
+            with uifutures.Executor() as executor:
+                executor.submit_ext(
+                    func=utils.make_quicktime,
+                    args=(movie_path, publisher.frames_path),
+                    name="Create QuickTime",
+                )
+            
+            # Finally set the Shotgun attributes.
+            publisher.movie_path = movie_path
+            publisher.movie_url = {
+                'url': 'http://keyweb' + movie_path,
+                'name': os.path.basename(movie_path),
+            }
+            publisher.frames_path = None
+        
 
 
 class Dialog(QtGui.QDialog):

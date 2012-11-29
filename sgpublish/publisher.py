@@ -62,38 +62,37 @@ class Publisher(object):
     
     """
     
-    def __init__(self, link, type, name, sgfs=None,
-        created_by=None,
-        create_version=False,
-        description=None,
-        directory=None,
-        frames_path=None,
-        movie_path=None,
-        movie_url=None,
-        path=None,
-        thumbnail_path=None,
-        version=None,
-    ):
+    def __init__(self, link, type, name, version=None, directory=None, sgfs=None, **kwargs):
         
         self.sgfs = sgfs or (SGFS(session=link.session) if isinstance(link, Entity) else SGFS())
+
+        self._type = str(type)
+        self._link = self.sgfs.session.merge(link)
+        self._name = str(name)
         
-        self.created_by = created_by or self.sgfs.session.guess_user()
-        self.create_version = bool(create_version)
-        self.description = str(description or '')
-        self.frames_path = str(frames_path or '')
-        self.link = self.sgfs.session.merge(link)
-        self.movie_path = str(movie_path or '')
-        self.movie_url = self._conform_url(movie_url)
-        self.name = str(name)
-        self.path = str(path or '')
-        self.thumbnail_path = str(thumbnail_path or '')
-        self.type = str(type)
+        # Set attributes from kwargs.
+        for name in (
+            'created_by',
+            'description',
+            'frames_path',
+            'movie_path',
+            'movie_url',
+            'path',
+            'thumbnail_path',
+        ):
+            setattr(self, name, kwargs.pop(name, None))
+        
+        if kwargs:
+            raise TypeError('too many kwargs: %r' % sorted(kwargs))
+        
+        # Get everything into the right type before sending it to Shotgun.
+        self._normalize_attributes()
         
         # First stage of the publish: create an "empty" PublishEvent.
         self.entity = self.sgfs.session.create('PublishEvent', {
             'code': self.name,
             'created_by': self.created_by,
-            'description': self.description or '',
+            'description': self.description,
             'project': self.link.project(),
             'sg_link': link,
             'sg_path_to_frames': self.frames_path,
@@ -126,7 +125,7 @@ class Publisher(object):
         
         # Generate the publish path.
         if directory is not None:
-            self._directory = directory
+            self._directory = os.path.abspath(directory)
         else:
             self._directory = self.sgfs.path_from_template(link, '%s_publish' % type, dict(
                 publish=self, # For b/c.
@@ -134,10 +133,12 @@ class Publisher(object):
                 PublishEvent=self.entity,
                 self=self.entity, # To mimick Shotgun templates.
             ))
-        if not os.path.exists(self._directory):
-            os.makedirs(self._directory)
-        elif os.path.exists(os.path.join(self._directory, '.sgfs.yml')):
+        
+        # Make sure the directory exists (after this), but it is not tagged.
+        if os.path.exists(os.path.join(self._directory, '.sgfs.yml')):
             raise ValueError('directory is already tagged')
+        elif not os.path.exists(self._directory):
+            os.makedirs(self._directory)
         
         self._committed = False
         
@@ -146,6 +147,36 @@ class Publisher(object):
         
         # Files to copy on commit; (src_path, dst_path)
         self._files = []
+    
+    def _normalize_url(self, url):
+        if url is None:
+            return
+        if isinstance(url, dict):
+            return url
+        if isinstance(url, basestring):
+            return {'url': url}
+        return {'url': str(url)}
+    
+    def _normalize_attributes(self):
+        self.created_by = self.created_by or self.sgfs.session.guess_user()
+        self.description = str(self.description or '') or None
+        self.frames_path = str(self.frames_path or '') or None
+        self.movie_path = str(self.movie_path or '') or None
+        self.movie_url = self._normalize_url(self.movie_url) or None
+        self.path = str(self.path or '') or None
+        self.thumbnail_path = str(self.thumbnail_path or '') or None
+
+    @property
+    def type(self):
+        return self._type
+    
+    @property
+    def link(self):
+        return self._link
+    
+    @property
+    def name(self):
+        return self._name
     
     @property
     def id(self):
@@ -163,17 +194,9 @@ class Publisher(object):
         return self._directory
     
     def isabs(self, dst_name):
-        """Is the given path within the publish directory?"""
+        """Is the given path absolute and within the publish directory?"""
         return dst_name.startswith(self._directory)
     
-    def _conform_url(self, url):
-        if url is None:
-            return
-        if isinstance(url, dict):
-            return url
-        if isinstance(url, basestring):
-            return {'url': url}
-        return {'url': str(url)}
         
     def abspath(self, dst_name):
         """Get the abspath of the given name within the publish directory.
@@ -186,7 +209,7 @@ class Publisher(object):
         else:
             return os.path.join(self._directory, dst_name.lstrip('/'))
     
-    def add_file(self, src_path, dst_name=None, unique=False):
+    def add_file(self, src_path, dst_name=None, make_unique=False):
         """Queue a file (or folder) to be copied into the publish.
         
         :param str src_path: The path to copy into the publish.
@@ -199,7 +222,7 @@ class Publisher(object):
         
         """
         dst_name = dst_name or os.path.basename(src_path)
-        if unique:
+        if make_unique:
             dst_name = self.unique_name(dst_name)
         elif self.file_exists(dst_name):
             raise ValueError('the file already exists in the publish')
@@ -232,36 +255,25 @@ class Publisher(object):
             raise ValueError('publish already comitted')
         self._committed = True
         
-        # We need to be able to wait for these in the except handler.
-        update_future = thumbnail_future = None
+        # Cleanup all user-settable attributes that are sent to Shotgun.
+        self._normalize_attributes()
         
         try:
             
-            executor = concurrent.futures.ThreadPoolExecutor(4)
-            
-            # Normalize attributes.
-            self.description = str(self.description or '')
-            self.frames_path = str(self.frames_path or '')
-            self.movie_path = str(self.movie_path or '')
-            self.movie_url = self._conform_url(self.movie_url)
-            self.path = str(self.path or self.directory or '')
-            self.thumbnail_path = str(self.thumbnail_path or '')
-        
             updates = {
-            
-                # Allow updates to all metadata, except name, link, type, and author.
                 'description': self.description,
                 'sg_path': self.path,
                 'sg_path_to_frames': self.frames_path,
                 'sg_path_to_movie': self.movie_path,
                 'sg_qt': self.movie_url,
-                
                 'sg_version': self._version,
-            
             }
             
-            # Force the updated into the entity for the tag.
+            # Force the updated into the entity for the tag, since the Shotgun
+            # update may not complete by the time that we tag the directory.
             self.entity.update(updates)
+            
+            executor = concurrent.futures.ThreadPoolExecutor(4)
             
             # Start the second stage of the publish.
             update_future = executor.submit(self.sgfs.session.update,
@@ -270,8 +282,9 @@ class Publisher(object):
                 updates,
             )
                 
-            # Start the thumbnail upload in the background.
             if self.thumbnail_path:
+                
+                # Start the thumbnail upload in the background.
                 thumbnail_future = executor.submit(self.sgfs.session.upload_thumbnail,
                     self.entity['type'],
                     self.entity['id'],
@@ -283,8 +296,11 @@ class Publisher(object):
                 thumbnail_name = self.add_file(
                     self.thumbnail_path,
                     thumbnail_name,
-                    unique=True
+                    make_unique=True
                 )
+            
+            else:
+                thumbnail_future = None
             
             # Copy in the scheduled files.
             for src_path, dst_path in self._files:
@@ -304,7 +320,7 @@ class Publisher(object):
             self.sgfs.tag_directory_with_entity(self._directory, self.entity, full_metadata)
             
             # Set permissions. I would like to own it by root, but we need root
-            # to do that. Oh well...
+            # to do that. We also leave the directory writable, but sticky.
             check_call(['chmod', '-R', 'a=rX', self._directory])
             check_call(['chmod', 'a+t,u+w', self._directory])
             
@@ -334,7 +350,6 @@ class Publisher(object):
     
     def promote_to_version(self, **kwargs):
         
-        print 'created by', self.created_by
         
         fields = {
             'code': '%s_v%04d' % (self.name, self.version),
