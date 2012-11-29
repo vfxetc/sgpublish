@@ -99,18 +99,42 @@ class SceneExporter(io_maya.Exporter):
                 os.makedirs(movie_directory)
             
             # Fetch the sound.
-            playback_slider = mel.eval('$tmpVar = $gPlayBackSlider')
-            sound_node = cmds.timeControl(playback_slider, query=True, sound=True)
-            sound_path = cmds.sound(sound_node, query=True, file=True) if sound_node else None
+            sound_path = None
+            if publisher.frames_path.startswith('/var/tmp/srv_playblast'):
+                
+                print '# Frames are from old playblast manager...'
+                
+                # From the old playblast manager...
+                audio_meta_path = os.path.join(os.path.dirname(publisher.frames_path), 'audio.txt')
+                if os.path.exists(audio_meta_path):
+                    audio_metadata = open(audio_meta_path).readlines()
+                    # print '# Audio metadata: %r' % audio_metadata
+                    audio_metadata = [x.strip() for x in audio_metadata]
+                    audio_metadata = [x for x in audio_metadata if not x.startswith('#')]
+                    audio_metadata = [x for x in audio_metadata if x]
+                    if len(audio_metadata) > 1 and os.path.splitext(audio_metadata[1])[1][1:] in ('aif', 'aiff', 'wav'):
+                        sound_path = audio_metadata[1]
+                        print '# Found sound from old playblast manager.'
+                else:
+                    print '# No audio.txt'
+            
+            # Fall back onto the current scene.
+            if not sound_path:
+                playback_slider = mel.eval('$tmpVar = $gPlayBackSlider')
+                sound_node = cmds.timeControl(playback_slider, query=True, sound=True)
+                sound_path = cmds.sound(sound_node, query=True, file=True) if sound_node else None
             
             # Spawn the job.
             print '# Scheduling make_quicktime to %r from %r' % (movie_path, publisher.frames_path)
+            if sound_path:
+                print '# Sound from %r' % sound_path
+            
             with uifutures.Executor() as executor:
                 
                 executor.submit_ext(
                     func=utils.make_quicktime,
                     args=(movie_path, publisher.frames_path, sound_path),
-                    name="QuickTime \"%s\" v%04d" % (publisher.name, publisher.version),
+                    name="QuickTime \"%s_v%04d\"" % (publisher.name, publisher.version),
                 )
                 
             
