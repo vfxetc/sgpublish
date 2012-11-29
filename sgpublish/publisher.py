@@ -9,11 +9,13 @@ from sgfs import SGFS
 from sgsession import Session, Entity
 
 from . import utils
+from . import versions
 
 __also_reload__ = [
     '.utils',
-    'sgfs.template',
+    '.versions',
     'sgfs',
+    'sgfs.template',
 ]
 
 
@@ -363,27 +365,7 @@ class Publisher(object):
         self.commit()
     
     def promote_for_review(self, **kwargs):
-        
-        fields = {
-            'code': '%s_v%04d' % (self.name, self.version),
-            'created_by': self.created_by,
-            'description': self.description or '',
-            'entity': self.link.parent(), # Shot or Asset.
-            'project': self.link.project(),
-            'sg_task': self.link,
-            'sg_path_to_frames': self.frames_path,
-            'sg_path_to_movie': self.movie_path,
-            'sg_qt': self.movie_url,
-            'user': self.created_by, # "Artist"
-        }
-        fields.update(kwargs)
-        
-        entity = self.sgfs.session.create('Version', fields)
-        
-        if self.thumbnail_path:
-            self.sgfs.session.share_thumbnail(entities=[entity.minimal], source_entity=self.entity.minimal)
-            
-        return entity
+        return versions.promote_publish(self.entity, **kwargs)
 
 
         

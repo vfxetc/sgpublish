@@ -9,5 +9,15 @@
     entity_types: [PublishEvent]
     selection_required: true
 
+-
+    entrypoint: sgpublish.actions.promote_to_version:run
+    title: "Publish: Promote to Version"
+    rich:
+        heading: Publish
+        title: Promote to Version
+        icon: bricks
+    entity_types: [PublishEvent]
+    selection_required: true
+
 
 
