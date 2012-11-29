@@ -121,7 +121,8 @@ class Widget(Base):
         # For dev only!
         self._playblast.setEnabled('KS_DEV_ARGS' in os.environ)
         
-        self._msgbox = None
+        self._viewer_msgbox = None
+        self.viewerClosed.connect(self._on_viewer_closed)
     
     def take_full_screenshot(self):
         
@@ -181,12 +182,12 @@ class Widget(Base):
                 viewer=False,
                 p=100,
                 framePadding=4,
-                filename=directory + '/frame',
+                filename=os.path.join(directory, scene_name),
             )
         finally:
             self.afterPlayblast.emit()
         
-        self.setFrames(directory + '/frame.####.jpg')
+        self.setFrames(os.path.join(directory, scene_name + '.####.jpg'))
     
     def setFrames(self, path):
         
@@ -202,17 +203,17 @@ class Widget(Base):
         # Inform the user that we want them to close the viewer before
         # publishing. This is really just to force them to look at it one last
         # time. We don't need to hold a reference to this one.
-        msgbox = QtGui.QMessageBox(
+        self._viewer_msgbox = msgbox = QtGui.QMessageBox(
             QtGui.QMessageBox.Warning,
             'Close Playblast Viewer',
-            'Please close the playblast viewer before publishing.',
+            'Please close the playblast viewer before publishing. It may take'
+            ' a few seconds to launch...',
             QtGui.QMessageBox.Ignore,
             self
         )
         msgbox.setWindowModality(Qt.WindowModal)
         msgbox.buttonClicked.connect(msgbox.hide)
         msgbox.show()
-        self.viewerClosed.connect(msgbox.hide)
         
         # On OS X, `mplay` waits for you to close it.
         if platform_system == 'Darwin':
@@ -226,5 +227,10 @@ class Widget(Base):
         # On Linux, it does not.
         else:
             self._player_waiting_timer = timer = QtCore.QTimer()
-            timer.singleShot(3000, self.viewerClosed)
+            timer.singleShot(5000, self.viewerClosed)
+    
+    def _on_viewer_closed(self):
+        if self._viewer_msgbox:
+            self._viewer_msgbox.hide()
+            self._viewer_msgbox = None
 
