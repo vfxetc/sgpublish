@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
 
-from maya import cmds, mel
+from maya import cmds
 
 import uifutures
 from sgfs import SGFS
@@ -27,6 +27,7 @@ from .. import utils as ui_utils
 from ... import utils
 from ...io import maya as io_maya
 from ..exporter.maya import publish as ui_publish
+from ..exporter.maya import sound
 
 __also_reload__ = [
     '...io.maya',
@@ -98,31 +99,7 @@ class SceneExporter(io_maya.Exporter):
             if not os.path.exists(movie_directory):
                 os.makedirs(movie_directory)
             
-            # Fetch the sound.
-            sound_path = None
-            if publisher.frames_path.startswith('/var/tmp/srv_playblast'):
-                
-                print '# Frames are from old playblast manager...'
-                
-                # From the old playblast manager...
-                audio_meta_path = os.path.join(os.path.dirname(publisher.frames_path), 'audio.txt')
-                if os.path.exists(audio_meta_path):
-                    audio_metadata = open(audio_meta_path).readlines()
-                    # print '# Audio metadata: %r' % audio_metadata
-                    audio_metadata = [x.strip() for x in audio_metadata]
-                    audio_metadata = [x for x in audio_metadata if not x.startswith('#')]
-                    audio_metadata = [x for x in audio_metadata if x]
-                    if len(audio_metadata) > 1 and os.path.splitext(audio_metadata[1])[1][1:] in ('aif', 'aiff', 'wav'):
-                        sound_path = audio_metadata[1]
-                        print '# Found sound from old playblast manager.'
-                else:
-                    print '# No audio.txt'
-            
-            # Fall back onto the current scene.
-            if not sound_path:
-                playback_slider = mel.eval('$tmpVar = $gPlayBackSlider')
-                sound_node = cmds.timeControl(playback_slider, query=True, sound=True)
-                sound_path = cmds.sound(sound_node, query=True, file=True) if sound_node else None
+            sound_path = sound.get_sound_for_frames(publisher.frames_path) or sound.get_current_sound()
             
             # Spawn the job.
             print '# Scheduling make_quicktime to %r from %r' % (movie_path, publisher.frames_path)

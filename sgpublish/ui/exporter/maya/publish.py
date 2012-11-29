@@ -19,6 +19,7 @@ import mayatools.playblast
 
 from ..publish import Widget as Base
 from ... import utils as ui_utils
+from . import sound
 
 __also_reload__ = [
     '...utils',
@@ -195,10 +196,14 @@ class Widget(Base):
         self._movie_path.setText(path)
         
         # Open a viewer, and wait for it to close.
-        # TODO: Connect audio.
+        sound_path = sound.get_sound_for_frames(path) or sound.get_current_sound()
         frame_rate = cmds.playbackOptions(q=True, framesPerSecond=True)
         houdini_style_path = re.sub(r'(#+)', lambda m: '$F%d' % len(m.group(1)), path)
-        proc = subprocess.Popen(['mplay', '-C', '-T', '-R', '-r', str(int(frame_rate)), houdini_style_path])
+        cmd = ['mplay', '-C', '-T', '-R', '-r', str(int(frame_rate))]
+        if sound_path:
+            cmd.extend(('-a', sound_path))
+        cmd.append(houdini_style_path)
+        proc = subprocess.Popen(cmd)
 
         # Inform the user that we want them to close the viewer before
         # publishing. This is really just to force them to look at it one last
