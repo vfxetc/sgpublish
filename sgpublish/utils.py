@@ -44,9 +44,13 @@ def make_quicktime(movie_path, frames_path, audio_path=None):
     qt = ks.core.quicktime.quicktime.quicktime()
     
     # Setup signal to the user.
-    qt.progress = lambda value, maximum: set_progress(value, maximum)
+    qt.progress = lambda value, maximum: set_progress(value, maximum, status="Encoding %s" % frame_sequence[value])
     
     # Process it.
     qt.make_quicktime(frame_sequence, movie_path)
     
-    notify('Your QuickTime is done.')
+    if audio_path:
+        set_progress(status="Adding %s" % audio_path)
+        qt.add_audio(movie_path, audio_path)
+    
+    notify('Your QuickTime is ready.')

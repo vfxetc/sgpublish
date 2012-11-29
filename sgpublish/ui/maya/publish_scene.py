@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
 
-from maya import cmds
+from maya import cmds, mel
 
 import uifutures
 from sgfs import SGFS
@@ -98,14 +98,21 @@ class SceneExporter(io_maya.Exporter):
             if not os.path.exists(movie_directory):
                 os.makedirs(movie_directory)
             
+            # Fetch the sound.
+            playback_slider = mel.eval('$tmpVar = $gPlayBackSlider')
+            sound_node = cmds.timeControl(playback_slider, query=True, sound=True)
+            sound_path = cmds.sound(sound_node, query=True, file=True) if sound_node else None
+            
             # Spawn the job.
             print '# Scheduling make_quicktime to %r from %r' % (movie_path, publisher.frames_path)
             with uifutures.Executor() as executor:
+                
                 executor.submit_ext(
                     func=utils.make_quicktime,
-                    args=(movie_path, publisher.frames_path),
-                    name="Create QuickTime",
+                    args=(movie_path, publisher.frames_path, sound_path),
+                    name="QuickTime \"%s\" v%04d" % (publisher.name, publisher.version),
                 )
+                
             
             # Finally set the Shotgun attributes.
             publisher.movie_path = movie_path

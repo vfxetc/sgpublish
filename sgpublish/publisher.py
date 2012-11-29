@@ -351,7 +351,7 @@ class Publisher(object):
         self.sgfs.session.delete('PublishEvent', id_)
         
         # Move the folder aside.
-        if not self._provided_directory and os.path.exists(self._directory):
+        if not self._directory_supplied and os.path.exists(self._directory):
             failed_directory = '%s_failed_%d' % (self._directory, id_)
             check_call(['mv', self._directory, failed_directory])
             self._directory = failed_directory
