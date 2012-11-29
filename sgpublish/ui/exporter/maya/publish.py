@@ -7,6 +7,7 @@ import glob
 import time
 import datetime
 import re
+import platform
 
 from PyQt4 import QtGui, QtCore
 Qt = QtCore.Qt
@@ -25,6 +26,10 @@ __also_reload__ = [
     'mayatools.playblast',
     'uifutures',
 ]
+
+
+# Calling this too much can lead to "inturrpted system calls". Huh.
+platform_system = platform.system()
 
 
 class PlayblastPicker(QtGui.QDialog):
@@ -184,17 +189,20 @@ class Widget(Base):
         self.setFrames(directory + '/frame.####.jpg')
     
     def setFrames(self, path):
-
-        frame_rate = cmds.playbackOptions(q=True, framesPerSecond=True)
+        
+        # The easy part.
+        self._movie_path.setText(path)
         
         # Open a viewer, and wait for it to close.
-        houdini_path = re.sub(r'(#+)', lambda m: '$F%d' % len(m.group(1)), path)
-        proc = subprocess.Popen(['mplay', '-C', '-T', '-R', '-r', str(int(frame_rate)), houdini_path])
-        self._player_waiter = thread = QtCore.QThread()
-        thread.run = functools.partial(self._wait_for_player, proc)
-        thread.start()
-        
-        self._msgbox = msgbox = QtGui.QMessageBox(
+        # TODO: Connect audio.
+        frame_rate = cmds.playbackOptions(q=True, framesPerSecond=True)
+        houdini_style_path = re.sub(r'(#+)', lambda m: '$F%d' % len(m.group(1)), path)
+        proc = subprocess.Popen(['mplay', '-C', '-T', '-R', '-r', str(int(frame_rate)), houdini_style_path])
+
+        # Inform the user that we want them to close the viewer before
+        # publishing. This is really just to force them to look at it one last
+        # time. We don't need to hold a reference to this one.
+        msgbox = QtGui.QMessageBox(
             QtGui.QMessageBox.Warning,
             'Close Playblast Viewer',
             'Please close the playblast viewer before publishing.',
@@ -204,12 +212,19 @@ class Widget(Base):
         msgbox.setWindowModality(Qt.WindowModal)
         msgbox.buttonClicked.connect(msgbox.hide)
         msgbox.show()
+        self.viewerClosed.connect(msgbox.hide)
         
-        self._movie_path.setText(path)
-    
-    def _wait_for_player(self, proc):
-        proc.wait()
-        self.viewerClosed.emit()
-        if self._msgbox:
-            self._msgbox.hide()
-            self._msgbox = None
+        # On OS X, `mplay` waits for you to close it.
+        if platform_system == 'Darwin':
+            self._player_waiting_thread = thread = QtCore.QThread()
+            def run():
+                proc.wait()
+                self.viewerClosed.emit()
+            thread.run = run
+            thread.start()
+        
+        # On Linux, it does not.
+        else:
+            self._player_waiting_timer = timer = QtCore.QTimer()
+            timer.singleShot(3000, self.viewerClosed)
+
