@@ -16,6 +16,7 @@ from maya import cmds
 
 import uifutures
 import mayatools.playblast
+import mayatools.playblast.picker
 
 from ..publish import Widget as Base
 from ... import utils as ui_utils
@@ -26,6 +27,7 @@ __also_reload__ = [
     '..publish',
     '....io.maya',
     'mayatools.playblast',
+    'mayatools.playblast.picker',
     'uifutures',
 ]
 
@@ -36,10 +38,8 @@ platform_system = platform.system()
 
 class PlayblastPicker(QtGui.QDialog):
 
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         super(PlayblastPicker, self).__init__(parent)
-        
-        self._find_playblasts()
         self._setup_ui()
     
     def _setup_ui(self):
@@ -49,11 +49,12 @@ class PlayblastPicker(QtGui.QDialog):
         
         self.layout().addWidget(QtGui.QLabel("Pick an existing playblast:"))
         
-        self._tab_widget = QtGui.QTabWidget()
-        self._tab_widget.setMinimumWidth(self.parent().sizeHint().width() + 75)
-        self._tab_widget.currentChanged.connect(self._selection_changed)
-        self.layout().addWidget(self._tab_widget)
+        self._picker = mayatools.playblast.picker.Picker()
+        self._picker.autoSetMinimumWidth()
         
+        self._picker.setMinimumWidth(600)
+        self._picker.pathChanged.connect(self._selection_changed)
+        self.layout().addWidget(self._picker)
         
         buttons = QtGui.QHBoxLayout()
         self.layout().addLayout(buttons)
@@ -76,57 +77,7 @@ class PlayblastPicker(QtGui.QDialog):
         buttons.addWidget(self._select_button)
         self._select_button.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         
-        tabs = {}
-        self._items = []
-        self._item_widgets = []
-        for directory, name, status, frame in sorted(self._playblasts, key=lambda (d, n, s, f): (' None' if s == 'None' else s, n)):
-            if status not in tabs:
-                tab = QtGui.QListWidget()
-                self._tab_widget.addTab(tab, "Playblasts" if status == "None" else status)
-                tab.currentTextChanged.connect(self._selection_changed)
-                tab.setIconSize(QtCore.QSize(100, 75))
-                tabs[status] = tab
-            tab = tabs[status]
-            
-            item = QtGui.QListWidgetItem()
-            tab.addItem(item)
-            item.setText(name)
-            item.setIcon(QtGui.QIcon(frame))
-            continue
-            widget.setContentsMargins(0, 0, 0, 0)
-            widget.setLayout(QtGui.QHBoxLayout())
-            thumb = QtGui.QLabel()
-            thumb.setPixmap()
-            widget.layout().addWidget(thumb)
-            widget.layout().addWidget(QtGui.QLabel(name))
-            self._items.append(item)
-            self._item_widgets.append(widget)
-            tab.setItemWidget(item, widget)
-        
-    
-    def _find_playblasts(self):
-        self._playblasts = []
-        if not os.path.exists('/var/tmp/srv_playblast'):
-            return
-        for name in os.listdir('/var/tmp/srv_playblast'):
-            directory = os.path.join('/var/tmp/srv_playblast', name)
-            frames = glob.glob(os.path.join(directory, '*.jpg'))
-            if not frames:
-                continue
-            status_path = os.path.join(directory, 'approval_status')
-            status = open(status_path).read() if os.path.exists(status_path) else None
-            status = str(status).title()
-            self._playblasts.append((directory, name, status, sorted(frames)[0]))
-    
-    def currentPath(self):
-        tab = self._tab_widget.currentWidget()
-        item = tab and tab.currentItem()
-        name = item and str(item.text())
-        path = os.path.join('/var/tmp/srv_playblast', name or '.doesnotexist')
-        return path if os.path.exists(path) else None
-        
-    def _selection_changed(self, *args):
-        path = self.currentPath()
+    def _selection_changed(self, path):
         self._select_button.setEnabled(path is not None)
     
     def _on_playblast(self):
@@ -137,9 +88,10 @@ class PlayblastPicker(QtGui.QDialog):
         self.hide()
     
     def _on_select(self):
-        path = self.currentPath()
+        path = self._picker.currentPath()
         if path is not None:
             self.hide()
+            # Assume it is jpg.
             self.parent().setFrames(path + '/*.jpg')
 
 
