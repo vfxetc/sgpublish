@@ -55,4 +55,9 @@ def promote_publish(publish, **kwargs):
     # Share thumbnails.
     sgfs.session.share_thumbnail(entities=[version.minimal], source_entity=publish.minimal)
     
+    # Set the status on the task.
+    sgfs.session.update('Task', publish['sg_link']['id'], {
+        'sg_status_list':'rev',
+    })
+    
     return version
