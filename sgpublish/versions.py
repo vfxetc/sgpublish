@@ -24,7 +24,7 @@ def promote_publish(publish, **kwargs):
         'project': publish['project'],
         'sg_task': publish['sg_link'],
         'sg_path_to_frames': publish['sg_path_to_frames'],
-        'sg_path_to_movie': publish['sg_path_to_frames'],
+        'sg_path_to_movie': publish['sg_path_to_movie'],
         'sg_qt': publish['sg_qt'],
         'user': publish['created_by'], # Artist.
         
