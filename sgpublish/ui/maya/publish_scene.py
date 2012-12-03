@@ -190,16 +190,10 @@ class Dialog(QtGui.QDialog):
         if not publisher:
             return
         
-        # Version-up the file.
-        src_path = cmds.file(q=True, sceneName=True)
-        new_path = utils.get_next_revision_path(os.path.dirname(src_path), basename(src_path), os.path.splitext(src_path)[1], publisher.version + 1)
-        cmds.file(rename=new_path)
-        # cmds.file(save=True, type=maya_type)
-        
         ui_utils.announce_publish_success(
             publisher,
             message="Version {publisher.version} of \"{publisher.name}\" has"
-                " been published and your scene has been versioned up."
+                " been published. Remember to version up!"
         )
         
         self.close()
