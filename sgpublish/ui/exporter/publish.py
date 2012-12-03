@@ -439,7 +439,7 @@ class Widget(QtGui.QWidget):
                 'entity': publisher.link,
                 'user': publisher.sgfs.session.guess_user(),
                 'duration': minutes,
-                'description': self.description(),
+                'description': '%s_v%04d' % (publisher.name, publisher.version),
                 'date': datetime.datetime.utcnow().date(),
             })
         
