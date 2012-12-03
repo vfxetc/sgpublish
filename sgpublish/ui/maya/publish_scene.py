@@ -160,7 +160,7 @@ class Dialog(QtGui.QDialog):
         
         self._exporter = SceneExporter()
         
-        self._publish_widget = ui_publish.Widget(self._exporter)
+        self._publish_widget = PublishWidget(self._exporter)
         self._publish_widget.layout().setContentsMargins(0, 0, 0, 0)
         self.layout().addWidget(self._publish_widget)
         
@@ -219,7 +219,7 @@ def run():
         dialog.close()
     
     # Be cautious if the scene was never saved
-    filename = cmds.file(q=True, sceneName=True)
+    filename = cmds.file(query=True, sceneName=True)
     if not filename:
         res = QtGui.QMessageBox.warning(None, 'Unsaved Scene', 'This scene has not beed saved. Continue anyways?',
             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
