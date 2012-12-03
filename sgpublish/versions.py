@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+
 from sgfs import SGFS
 
 
@@ -53,20 +55,31 @@ def promote_publish(publish, **kwargs):
     # Create the new version.
     version = sgfs.session.create('Version', fields)
     
-    # Share thumbnails.
-    sgfs.session.share_thumbnail(entities=[version.minimal], source_entity=publish.minimal)
+    with ThreadPoolExecutor(4) as executor:
+        
+        # Share thumbnails.
+        executor.submit(sgfs.session.share_thumbnail,
+            entities=[version.minimal],
+            source_entity=publish.minimal,
+        )
     
-    # Set the status on the task.
-    sgfs.session.update('Task', publish['sg_link']['id'], {
-        'sg_status_list':'rev',
-    })
+        # Set the status/version on the task.
+        executor.submit(sgfs.session.update,
+            'Task',
+            publish['sg_link']['id'],
+            {
+                'sg_status_list': 'rev',
+                'sg_latest_version': version,
+            },
+        )
     
-    # Set the latest version on the entity.
-    entity = publish['sg_link'].fetch('entity')
-    if entity['type'] in ('Asset', 'Shot'):
-        sgfs.session.update('Task', publish['sg_link']['id'], {'sg_latest_version': version})
-        sgfs.session.update(entity['type'], entity['id'], {'sg_latest_version': version})
-    else:
-        print '# Entity %r is not Asset or Shot' % entity
+        # Set the latest version on the entity.
+        entity = publish['sg_link'].fetch('entity')
+        if entity['type'] in ('Asset', 'Shot'):
+            executor.submit(sgfs.session.update,
+                entity['type'],
+                entity['id'],
+                {'sg_latest_version': version},
+            )
     
     return version
