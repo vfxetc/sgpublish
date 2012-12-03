@@ -170,7 +170,7 @@ class Widget(Base):
                 endTime=maxTime,
                 format='image',
                 viewer=False,
-                p=100,
+                percent=100,
                 framePadding=4,
                 filename=os.path.join(directory, scene_name),
             )

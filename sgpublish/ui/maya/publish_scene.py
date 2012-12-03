@@ -40,7 +40,7 @@ __also_reload__ = [
 
 
 def basename(src_path=None):    
-    basename = os.path.basename(src_path or cmds.file(q=True, sceneName=True))
+    basename = os.path.basename(src_path or cmds.file(q=True, sceneName=True) or 'untitled')
     basename = os.path.splitext(basename)[0]
     basename = re.sub(r'_*[rv]\d+', '', basename)
     return basename
@@ -224,15 +224,18 @@ def run():
     if dialog:
         dialog.close()
     
-    # Make sure the file was saved once.
-    # TODO: Remove this restriction eventually.
+    # Be cautious if the scene was never saved
     filename = cmds.file(q=True, sceneName=True)
     if not filename:
-        QtGui.QMessageBox.warning(None, 'Unsaved Scene', 'The scene must be saved once before it can be published.')
-        return
+        res = QtGui.QMessageBox.warning(None, 'Unsaved Scene', 'This scene has not beed saved. Continue anyways?',
+            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
+            QtGui.QMessageBox.No
+        )
+        if res & QtGui.QMessageBox.No:
+            return
     
     workspace = cmds.workspace(q=True, rootDirectory=True)
-    if not filename.startswith(workspace):
+    if filename and not filename.startswith(workspace):
         res = QtGui.QMessageBox.warning(None, 'Mismatched Workspace', 'This scene is not from the current workspace. Continue anyways?',
             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
             QtGui.QMessageBox.No

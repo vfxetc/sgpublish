@@ -7,6 +7,7 @@ import tempfile
 import traceback
 import platform
 import subprocess
+import datetime
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
@@ -21,6 +22,43 @@ __also_reload__ = [
     '..utils',
     '...io.base',
 ]
+
+
+class TimeSpinner(QtGui.QSpinBox):
+    
+    def __init__(self):
+        super(TimeSpinner, self).__init__(
+            singleStep=15,
+            maximum=60*8*5,
+        )
+    
+    def textFromValue(self, value):
+        return '%d:%02d' % (value / 60, value % 60)
+    
+    def valueFromText(self, text, strict=False):
+        m = re.match('(\d+):(\d{,2})', text)
+        if m:
+            return 60 * int(m.group(1)) + int(m.group(2) or 0)
+        try:
+            return int(text)
+        except ValueError:
+            pass
+        try:
+            return int(60 * float(text))
+        except ValueError:
+            pass
+        
+        if strict:
+            return None
+        else:
+            return 0
+    
+    def validate(self, text, pos):
+        if self.valueFromText(text) is not None:
+            return QtGui.QValidator.Acceptable, pos
+        else:
+            return QtGui.QValidator.Invalid, pos
+    
 
 
 class Widget(QtGui.QWidget):
@@ -69,6 +107,7 @@ class Widget(QtGui.QWidget):
         
         self._name_field = QtGui.QLineEdit(self._basename)
         self._name_field.setEnabled(False)
+        self._name_field.editingFinished.connect(self._on_name_edited)
         
         self._version_spinbox = QtGui.QSpinBox()
         self._version_spinbox.setMinimum(1)
@@ -112,16 +151,33 @@ class Widget(QtGui.QWidget):
         self._movie_browse.setFixedWidth(self._movie_browse.sizeHint().width() + 2)
         
         self._promote_checkbox = QtGui.QCheckBox("Promote to 'Version' for review")
-        self.layout().addWidget(self._promote_checkbox)
+        # self.layout().addWidget(self._promote_checkbox)
+        
+        self._timelog_spinbox = TimeSpinner()
+        add_hour = QtGui.QPushButton("+1 Hour")
+        add_hour.setFixedHeight(self._timelog_spinbox.sizeHint().height())
+        @add_hour.clicked.connect
+        def on_add_hour():
+            self._timelog_spinbox.setValue(self._timelog_spinbox.value() + 60)
+        add_day = QtGui.QPushButton("+1 Day")
+        add_day.setFixedHeight(self._timelog_spinbox.sizeHint().height())
+        @add_day.clicked.connect
+        def on_add_day():
+            self._timelog_spinbox.setValue(self._timelog_spinbox.value() + 60 * 8)
+        
+        self.layout().addLayout(hbox(
+            vbox("Time to Log", hbox(self._timelog_spinbox, "hrs:mins", add_hour, add_day)),
+            vbox("Review", self._promote_checkbox),
+        ))
         
     def _fetch_existing_data(self):
         try:
             sgfs = SGFS()
             tasks = sgfs.entities_from_path(self._exporter.workspace)
             if not tasks:
-                raise ValueError('No entities in workspace %r', self._exporter.workspace)
+                raise ValueError('No entities in workspace %r' % self._exporter.workspace)
             if any(x['type'] != 'Task' for x in tasks):
-                raise ValueError('Non-Task entity in workspace %r', self._exporter.workspace)
+                raise ValueError('Non-Task entity in workspace %r' % self._exporter.workspace)
             publishes = sgfs.session.find(
                 'PublishEvent',
                 [
@@ -134,9 +190,9 @@ class Widget(QtGui.QWidget):
                 ]
             )
 
-        except:
+        except Exception as e:
             self._task_combo.clear()
-            self._task_combo.addItem('Loading Error!', {})
+            self._task_combo.addItem('Loading Error! %s' % e, {})
             raise
         
         else:
@@ -203,6 +259,11 @@ class Widget(QtGui.QWidget):
         self._name_field.setText(data.get('name', self._basename))
         self._version_spinbox.setMinimum(data.get('version', 0) + 1)
         self._version_spinbox.setValue(data.get('version', 0) + 1)
+    
+    def _on_name_edited(self):
+        name = str(self._name_field.text())
+        name = re.sub(r'\W+', '_', name).strip('_')
+        self._name_field.setText(name)
     
     def _on_version_changed(self, new_value):
         if new_value > self._version_spinbox.minimum() and not self._version_warning_issued:
@@ -324,6 +385,13 @@ class Widget(QtGui.QWidget):
         if not self.safety_check(**kwargs):
             return
         
+        # progress = QtGui.QProgressDialog()
+        # progress.setWindowTitle('Publishing to Shotgun')
+        # progress.setLabelText('Finding entities to publish...')
+        # thread = QtCore.QThread()
+        # thread.run = progress.exec_
+        # thread.start()
+        
         data = self._task_combo.currentData()
         task = data.get('task')
         if not task:
@@ -332,6 +400,8 @@ class Widget(QtGui.QWidget):
             if not tasks:
                 raise ValueError('Could not find SGFS tagged entities')
             task = tasks[0]
+        
+        # progress.setLabelText('Exporting...')
         
         publisher = self._exporter.publish(task,
             name=self.name(),
@@ -344,9 +414,25 @@ class Widget(QtGui.QWidget):
         )
     
         if self._promote_checkbox.isChecked():
+            # progress.setLabelText('Creating Version for Review...')
             promotion_fields = self._exporter.promotion_fields(publisher, **kwargs)
             print "PROMOTE", promotion_fields
             publisher.promote_for_review(**promotion_fields)
+        
+        # Create the timelog.
+        minutes = self._timelog_spinbox.value()
+        if minutes:
+            # progress.setLabelText('Logging time...')
+            publisher.sgfs.session.create('TimeLog', {
+                'project': publisher.entity.project(),
+                'entity': publisher.link,
+                'user': publisher.sgfs.session.guess_user(),
+                'duration': minutes,
+                'description': self.description(),
+                'date': datetime.datetime.utcnow().date(),
+            })
+        
+        # progress.hide()
         
         return publisher
         

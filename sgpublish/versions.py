@@ -32,6 +32,7 @@ def promote_publish(publish, **kwargs):
         # Just because the old "Submit Version" tool had these.
         'sg_frames_aspect_ratio': 1.0,
         'sg_movie_aspect_ratio': 1.0,
+        # I should be able to do this as a very deep fetch.
         'sg_department': publish['sg_link']['step'].fetch('code') or 'Daily',
     }
 
