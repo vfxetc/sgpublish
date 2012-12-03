@@ -91,7 +91,7 @@ class SceneExporter(io_maya.Exporter):
             # Make it unique.
             if os.path.exists(movie_path):
                 base, ext = os.path.splitext(movie_path)
-                for i in itertools.counter(1):
+                for i in itertools.count(1):
                     movie_path = '%s_%04d%s' % (base, i, ext)
                     if not os.path.exists(movie_path):
                         break
