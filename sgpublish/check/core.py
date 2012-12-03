@@ -3,7 +3,7 @@ import collections
 from sgfs import SGFS
 
 
-ReferenceStatus = collections.namedtuple('ReferenceStatus', ('path', 'current', 'latest', 'is_latest', 'all'))
+ReferenceStatus = collections.namedtuple('ReferenceStatus', ('path', 'used', 'latest', 'is_latest', 'all'))
 
 
 def check_paths(paths):

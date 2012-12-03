@@ -13,6 +13,10 @@ import mayatools.shelf
 from .. import utils as ui_utils
 from ... import check
 
+__also_reload__ = [
+    '...check.core',
+]
+
 
 class Dialog(QtGui.QDialog):
     
@@ -50,7 +54,7 @@ class Dialog(QtGui.QDialog):
         reference_statuses = check.check_paths(cmds.file(q=True, reference=True))
         for reference in reference_statuses:
             
-            path = publish.path
+            path = reference.path
             publish = reference.used
             task = publish.parent()
             entity = task.parent()
