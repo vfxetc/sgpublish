@@ -138,10 +138,20 @@ class Publisher(object):
                 self=self.entity, # To mimick Shotgun templates.
             ))
         
-        # Make sure the directory exists (after this), but it is not tagged.
-        if os.path.exists(os.path.join(self._directory, '.sgfs.yml')):
-            raise ValueError('directory is already tagged')
-        elif not os.path.exists(self._directory):
+        # If the directory is tagged with existing entities, then we cannot
+        # proceed. This allows one to retire a publish and then overwrite it.
+        tags = self.sgfs.get_directory_entity_tags(self._directory)
+        if any(tag['entity'].exists() for tag in tags):
+            raise ValueError('directory is already tagged: %r' % self._directory)
+        
+        # If the directory already exists, is tagged, and those tags are not
+        # valid, then move it aside. After all of that, make sure the directory
+        # that we are going to write into does exist.
+        if os.path.exists(self._directory):
+            if tags and not self._directory_supplied:
+                check_call(['mv', self._directory, '%s_retired_%d' % (self._directory, tags[-1]['entity']['id'])])
+                os.makedirs(self._directory)
+        else:
             os.makedirs(self._directory)
         
         self._committed = False
@@ -247,7 +257,7 @@ class Publisher(object):
         if not self.file_exists(dst_name):
             return dst_name
         base, ext = os.path.splitext(dst_name)
-        for i in itertools.counter(1):
+        for i in itertools.count(1):
             unique_name = '%s_%d%s' % (base, i, ext)
             if not self.file_exists(unique_name):
                 return unique_name
