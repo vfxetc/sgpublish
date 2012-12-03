@@ -378,6 +378,17 @@ class Widget(QtGui.QWidget):
             # Fatal.
             return False
         
+        # Promoting to version without a timelog.
+        if self._promote_checkbox.isChecked() and not self._timelog_spinbox.value():
+            res = QtGui.QMessageBox.warning(self,
+                "Version without Time Log",
+                "Are you sure that this version did not take you any time?",
+                QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
+                QtGui.QMessageBox.No,
+            )
+            if res & QtGui.QMessageBox.No:
+                return False
+        
         return True
         
     def export(self, **kwargs):
