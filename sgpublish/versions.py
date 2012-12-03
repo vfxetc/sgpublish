@@ -61,4 +61,12 @@ def promote_publish(publish, **kwargs):
         'sg_status_list':'rev',
     })
     
+    # Set the latest version on the entity.
+    entity = publish['sg_link'].fetch('entity')
+    if entity['type'] in ('Asset', 'Shot'):
+        sgfs.session.update('Task', publish['sg_link']['id'], {'sg_latest_version': version})
+        sgfs.session.update(entity['type'], entity['id'], {'sg_latest_version': version})
+    else:
+        print '# Entity %r is not Asset or Shot' % entity
+    
     return version
