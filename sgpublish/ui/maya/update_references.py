@@ -8,8 +8,10 @@ Qt = QtCore.Qt
 from maya import cmds
 
 from sgfs import SGFS
+import mayatools.shelf
 
 from .. import utils as ui_utils
+from ... import check
 
 
 class Dialog(QtGui.QDialog):
@@ -45,27 +47,15 @@ class Dialog(QtGui.QDialog):
     
     def _populate_references(self):
         
-        sgfs = SGFS()
-        
-        for path in cmds.file(q=True, reference=True):
+        reference_statuses = check.check_paths(cmds.file(q=True, reference=True))
+        for reference in reference_statuses:
             
-            publishes = sgfs.entities_from_path(path)
-            if not publishes or publishes[0]['type'] != 'PublishEvent':
-                print '# Skipping', path
-                continue
-            
-            publish = publishes[0]
-            
-            siblings = sgfs.session.find('PublishEvent', [
-                ('sg_link', 'is', publish['sg_link']),
-                ('code', 'is', publish['code']),
-                ('sg_type', 'is', publish['sg_type']),
-            ], ['sg_path'])
-            siblings.sort(key=lambda x: x['sg_version'])
-            max_version = max(x['sg_version'] for x in siblings)
-            
+            path = publish.path
+            publish = reference.used
             task = publish.parent()
             entity = task.parent()
+            siblings = reference.all
+            
             namespace = cmds.file(path, q=True, namespace=True)
             node = cmds.referenceQuery(path, referenceNode=True)
             item = QtGui.QTreeWidgetItem([
@@ -77,7 +67,7 @@ class Dialog(QtGui.QDialog):
                 publish['code'],
                 'v%04d' % publish['sg_version']
             ])
-            item.setIcon(0, ui_utils.icon('silk/tick' if publish['sg_version'] == max_version else 'silk/cross', size=12, as_icon=True))
+            item.setIcon(0, ui_utils.icon('silk/tick' if reference.is_latest else 'silk/cross', size=12, as_icon=True))
             item.setData(0, Qt.UserRole, {'publish': publish, 'siblings': siblings})
             
             combo = QtGui.QComboBox()
