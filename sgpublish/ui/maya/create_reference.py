@@ -49,9 +49,14 @@ class Preview(QtGui.QWidget):
         self._created_at_label.setText(str(at.strftime('%y-%m-%d %I:%M %p')))
         
         if entity not in self._pixmaps:
-            path = os.path.join(SGFS(session=entity.session).path_for_entity(entity), '.sgpublish.thumbnail.jpg')
-            if os.path.exists(path):
-                pixmap = QtGui.QPixmap(path)
+            sgfs = SGFS(session=entity.session)
+            path = sgfs.path_for_entity(entity)
+            tags = sgfs.get_directory_entity_tags(path)
+            tags = [t for t in tags if t['entity'] is entity]
+            thumbnail_path = tags[0].get('sgpublish', {}).get('thumbnail') if tags else None
+            thumbnail_path = thumbnail_path or os.path.join(path, '.sgfs.thumbnail.jpg')
+            if os.path.exists(thumbnail_path):
+                pixmap = QtGui.QPixmap(thumbnail_path)
             else:
                 path = os.path.abspath(os.path.join(
                     __file__, '..', '..', '..', '..', 'art', 'no-thumbnail.png'
