@@ -259,7 +259,7 @@ class Widget(QtGui.QWidget):
             return
         self._name_field.setEnabled('new' in data)
         self._name_field.setText(data.get('name', self._basename))
-        self._version_spinbox.setValue(data.get('publish', {}).get('sg_version') + 1)
+        self._version_spinbox.setValue(data.get('publish', {}).get('sg_version', 0) + 1)
     
     def _on_name_edited(self):
         name = str(self._name_field.text())
