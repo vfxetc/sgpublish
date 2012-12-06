@@ -84,8 +84,7 @@ class Dialog(QtGui.QDialog):
         self.setLayout(QtGui.QVBoxLayout())
         
         workspace = cmds.workspace(q=True, rootDirectory=True)
-        self._model, self._picker = picker_presets.publishes_from_path(workspace,
-            publish_types=['maya_scene', 'maya_camera'])
+        self._model, self._picker = picker_presets.publishes_from_path(workspace)
         self._picker.setMaximumHeight(400)
         self._picker.nodeChanged = self._on_node_changed
         self.layout().addWidget(self._picker)
