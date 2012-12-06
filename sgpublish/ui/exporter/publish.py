@@ -13,6 +13,7 @@ from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
 
 from sgfs import SGFS
+from sgactions.ticketui import ticket_ui_context
 
 from ..utils import ComboBox, hbox, vbox
 from .. import utils
@@ -205,21 +206,22 @@ class Widget(QtGui.QWidget):
         select = None
         
         self._existing_names.update(p['code'] for p in publishes)
+        publishes.sort(key=lambda p: p['sg_version'])
         
         for t_i, task in enumerate(tasks):
-            name_to_version = {}
+            name_to_publish = {}
             for publish in publishes:
                 if publish['sg_link'] is not task:
                     continue
                 name = publish['code']
-                name_to_version[name] = max(name_to_version.get(name, 0), publish['sg_version'])
+                name_to_publish[name] = publish
                 
                 if publish['id'] in history:
                     select = t_i, name
             
             self._task_combo.addItem('%s - %s' % task.fetch(('step.Step.short_name', 'content')), {
                 'task': task,
-                'publishes': name_to_version,
+                'publishes': name_to_publish,
             })
         
         if 'loading' in self._task_combo.itemData(0):
@@ -243,8 +245,8 @@ class Widget(QtGui.QWidget):
         self._name_combo.clear()
         data = self._task_combo.currentData() or {}
         
-        for name, version in sorted(data.get('publishes', {}).iteritems()):
-            self._name_combo.addItem('%s (v%04d)' % (name, version), {'name': name, 'version': version})
+        for name, publish in sorted(data.get('publishes', {}).iteritems()):
+            self._name_combo.addItem('%s (v%04d)' % (name, publish['sg_version']), {'name': name, 'publish': publish})
         self._name_combo.addItem('Create New Stream...', {'new': True})
         if was_new:
             self._name_combo.setCurrentIndex(self._name_combo.count() - 1)
@@ -257,8 +259,7 @@ class Widget(QtGui.QWidget):
             return
         self._name_field.setEnabled('new' in data)
         self._name_field.setText(data.get('name', self._basename))
-        self._version_spinbox.setMinimum(data.get('version', 0) + 1)
-        self._version_spinbox.setValue(data.get('version', 0) + 1)
+        self._version_spinbox.setValue(data.get('publish', {}).get('sg_version') + 1)
     
     def _on_name_edited(self):
         name = str(self._name_field.text())
@@ -266,7 +267,8 @@ class Widget(QtGui.QWidget):
         self._name_field.setText(name)
     
     def _on_version_changed(self, new_value):
-        if new_value > self._version_spinbox.minimum() and not self._version_warning_issued:
+        data = self._name_combo.itemData(self._name_combo.currentIndex())
+        if data.get('publish') and new_value != data['publish']['sg_version'] + 1 and not self._version_warning_issued:
             res = QtGui.QMessageBox.warning(None,
                 "Manual Versions?",
                 "Are you sure you want to change the version?\n"
@@ -275,7 +277,7 @@ class Widget(QtGui.QWidget):
                 QtGui.QMessageBox.Cancel
             )
             if res & QtGui.QMessageBox.Cancel:
-                self._version_spinbox.setValue(self._version_spinbox.minimum())
+                self._version_spinbox.setValue(data['publish']['sg_version'] + 1)
                 return
             self._version_warning_issued = True
     
@@ -392,19 +394,16 @@ class Widget(QtGui.QWidget):
         return True
         
     def export(self, **kwargs):
-        
+        with ticket_ui_context():
+            return self.__export(kwargs)
+    
+    def __export(self, kwargs):
+    
         if not self.safety_check(**kwargs):
             return
         
-        # progress = QtGui.QProgressDialog()
-        # progress.setWindowTitle('Publishing to Shotgun')
-        # progress.setLabelText('Finding entities to publish...')
-        # thread = QtCore.QThread()
-        # thread.run = progress.exec_
-        # thread.start()
-        
-        data = self._task_combo.currentData()
-        task = data.get('task')
+        task_data = self._task_combo.currentData()
+        task = task_data.get('task')
         if not task:
             sgfs = SGFS()
             tasks = sgfs.entities_from_path(self._exporter.workspace, 'Task')
@@ -412,12 +411,14 @@ class Widget(QtGui.QWidget):
                 raise ValueError('Could not find SGFS tagged entities')
             task = tasks[0]
         
-        # progress.setLabelText('Exporting...')
+        stream_data = self._name_combo.currentData()
+        parent = stream_data.get('publish')
         
         publisher = self._exporter.publish(task,
             name=self.name(),
             description=self.description(),
             version=self.version(),
+            parent=parent,
             thumbnail_path=self.thumbnail_path(),
             frames_path=self.frames_path(),
             movie_path=self.movie_path(),

@@ -64,13 +64,23 @@ class Publisher(object):
     
     """
     
-    def __init__(self, link, type, name, version=None, directory=None, sgfs=None, **kwargs):
+    def __init__(self, link, type, name, version=None, parent=None, directory=None, sgfs=None, **kwargs):
         
         self.sgfs = sgfs or (SGFS(session=link.session) if isinstance(link, Entity) else SGFS())
 
         self._type = str(type)
         self._link = self.sgfs.session.merge(link)
         self._name = str(name)
+        self._parent = parent
+        
+        # To only allow us to commit once.
+        self._committed = False
+        
+        # Will be set into the tag.
+        self.metadata = {}
+        
+        # Files to copy on commit; (src_path, dst_path)
+        self._files = []
         
         # Set attributes from kwargs.
         for name in (
@@ -90,6 +100,20 @@ class Publisher(object):
         # Get everything into the right type before sending it to Shotgun.
         self._normalize_attributes()
         
+        # Start fetching existing publishes while we create this one.
+        if version is None:
+            existing_future = concurrent.futures.ThreadPoolExecutor(1).submit(
+                self.sgfs.session.find,
+                'PublishEvent',
+                [
+                    ('sg_link', 'is', self.link),
+                    ('sg_type', 'is', self.type),
+                    ('code', 'is', self.name),
+                    ('id', 'less_than', self.entity['id']),
+                ],
+                ['sg_version', 'created_at'],
+            )
+        
         # First stage of the publish: create an "empty" PublishEvent.
         self.entity = self.sgfs.session.create('PublishEvent', {
             'code': self.name,
@@ -104,63 +128,62 @@ class Publisher(object):
             'sg_version': 0, # Signifies that this is "empty".
         })
         
-        # Determine the version number by looking at the existing publishes.
-        self._version = 1
-        self._parent = None
-        for existing in self.sgfs.session.find('PublishEvent', [
-            ('sg_link', 'is', self.link),
-            ('sg_type', 'is', self.type),
-            ('code', 'is', self.name),
-            ('id', 'less_than', self.entity['id']),
-        ], ['sg_version', 'created_at']):
-            if existing['sg_version']:
-                self._version = existing['sg_version'] + 1
-                self._parent = existing
-            else:
-                self._version += 1
-        
+        # Manually forced version number.
         if version is not None:
-            version = int(version)
-            if self._parent and version <= self._parent['sg_version']:
-                raise ValueError('requested version is too low')
-            self._version = version
+            self._version = int(version)
         
-        # Generate the publish path.
+        # Determine the version number by looking at the existing publishes.
+        else:
+            self._version = 1
+            for existing in existing_future.result():
+            
+                # Skip over ones that are later than we just created.
+                if existing['id'] >= self.entity['id']:
+                    continue
+            
+                # Only increment for non-failed commits.
+                if existing['sg_version']:
+                    self._version = existing['sg_version'] + 1
+                    self._parent = existing
+        
+        # Manually forced directory.
         if directory is not None:
             self._directory_supplied = True
+            
+            # Make it if it doesn't already exist, but don't care if it does.
             self._directory = os.path.abspath(directory)
+            try:
+                os.makedirs(self._directory)
+            except OSError as e:
+                if e.errno != 17: # File exists.
+                    raise
+        
         else:
             self._directory_supplied = False
-            self._directory = self.sgfs.path_from_template(link, '%s_publish' % type, dict(
+            
+            # Find a unique name using the template result as a base.
+            base_path = self.sgfs.path_from_template(link, '%s_publish' % type, dict(
                 publish=self, # For b/c.
                 publisher=self, 
                 PublishEvent=self.entity,
                 self=self.entity, # To mimick Shotgun templates.
             ))
+            unique_iter = ('%s_%d' % (base_path, i) for i in itertools.count(1))
+            for path in itertools.chain([base_path], unique_iter):
+                try:
+                    os.makedirs(path)
+                except OSError as e:
+                    if e.errno != 17: # File exists
+                        raise
+                else:
+                    self._directory = path
+                    break
         
         # If the directory is tagged with existing entities, then we cannot
         # proceed. This allows one to retire a publish and then overwrite it.
         tags = self.sgfs.get_directory_entity_tags(self._directory)
         if any(tag['entity'].exists() for tag in tags):
             raise ValueError('directory is already tagged: %r' % self._directory)
-        
-        # If the directory already exists, is tagged, and those tags are not
-        # valid, then move it aside. After all of that, make sure the directory
-        # that we are going to write into does exist.
-        if os.path.exists(self._directory):
-            if tags and not self._directory_supplied:
-                check_call(['mv', self._directory, '%s_retired_%d' % (self._directory, tags[-1]['entity']['id'])])
-                os.makedirs(self._directory)
-        else:
-            os.makedirs(self._directory)
-        
-        self._committed = False
-        
-        # Will be set into the tag.
-        self.metadata = {}
-        
-        # Files to copy on commit; (src_path, dst_path)
-        self._files = []
     
     def _normalize_url(self, url):
         if url is None:
@@ -338,7 +361,7 @@ class Publisher(object):
             # if everything was successful.
             our_metadata = {}
             if self._parent:
-                our_metadata['parent'] = self._parent.minimal
+                our_metadata['parent'] = self.sgfs.session.merge(self._parent).minimal
             if self.thumbnail_path:
                 our_metadata['thumbnail'] = thumbnail_name.encode('utf8') if isinstance(thumbnail_name, unicode) else thumbnail_name
             full_metadata = dict(self.metadata)
@@ -355,16 +378,15 @@ class Publisher(object):
     def _failed(self):
         
         # Remove the entity's ID.
-        id_ = self.entity.pop('id', None)
-        if not id_:
-            return
+        id_ = self.entity.pop('id', None) or 0
         
-        # Delete the entity.
-        self.sgfs.session.delete('PublishEvent', id_)
+        # Attempt to set the version to 0 on Shotgun.
+        if id_ and self.entity.get('sg_version'):
+            self.sgfs.session.update('PublishEvent', id_, {'sg_version': 0})
         
         # Move the folder aside.
         if not self._directory_supplied and os.path.exists(self._directory):
-            failed_directory = '%s_failed_%d' % (self._directory, id_)
+            failed_directory = '%s.%d.failed' % (self._directory, id_)
             check_call(['mv', self._directory, failed_directory])
             self._directory = failed_directory
     
