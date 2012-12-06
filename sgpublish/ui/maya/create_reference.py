@@ -38,15 +38,19 @@ class Preview(QtGui.QWidget):
         form.addRow("<b>By:</b>", self._created_by_label)
         self._created_at_label = QtGui.QLabel()
         form.addRow("<b>At:</b>", self._created_at_label)
+        self._description_label = QtGui.QLabel()
+        self._description_label.setWordWrap(True)
+        form.addRow("<b>Desc:</b>", self._description_label)
         
         self.layout().addStretch()
     
     def update(self, entity):
         
         # Do this async.
-        by, at = entity.fetch(('created_by.HumanUser.name', 'created_at'))
+        by, at, desc = entity.fetch(('created_by.HumanUser.name', 'created_at', 'description'))
         self._created_by_label.setText(str(by))
         self._created_at_label.setText(str(at.strftime('%y-%m-%d %I:%M %p')))
+        self._description_label.setText(str(desc))
         
         if entity not in self._pixmaps:
             sgfs = SGFS(session=entity.session)
