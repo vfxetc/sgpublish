@@ -1,0 +1,1 @@
+- maya.create_reference should only show maya_* publish types.
