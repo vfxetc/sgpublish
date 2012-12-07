@@ -15,9 +15,7 @@ Qt = QtCore.Qt
 from sgfs import SGFS
 from sgactions.ticketui import ticket_ui_context
 
-from sgpublish.ui.utils import ComboBox, hbox, vbox
-from sgpublish import utils
-from sgpublish.ui import utils as ui_utils
+from sgpublish.ui.utils import ComboBox, hbox, vbox, icon
 
 
 class TimeSpinner(QtGui.QSpinBox):
@@ -139,7 +137,7 @@ class Widget(QtGui.QWidget):
         ))
         
         self._movie_path = QtGui.QLineEdit()
-        self._movie_browse = QtGui.QPushButton(ui_utils.icon('silk/folder', size=12, as_icon=True), "Browse")
+        self._movie_browse = QtGui.QPushButton(icon('silk/folder', size=12, as_icon=True), "Browse")
         self._movie_browse.clicked.connect(self._on_movie_browse)
         self._movie_layout = hbox(self._movie_path, self._movie_browse)
         self.layout().addLayout(vbox("Path to Movie or Frames (to be copied to publish)", self._movie_layout, spacing=4))
