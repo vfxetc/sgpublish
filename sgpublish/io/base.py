@@ -2,11 +2,7 @@ import os
 
 import uifutures
 
-from ..publisher import Publisher
-
-__also_reload__ = [
-    '..publisher',
-]
+from sgpublish.publisher import Publisher
 
 
 class Exporter(object):

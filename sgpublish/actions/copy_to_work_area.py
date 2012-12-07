@@ -11,8 +11,8 @@ from sgfs import SGFS
 import sgfs.ui.picker.presets as picker_presets
 import sgfs.ui.picker.utils as picker_utils
 
-from .. import utils
-from ..ui import utils as ui_utils
+from sgpublish import utils
+from sgbpuslih.ui import utils as ui_utils
 
 
 class Dialog(QtGui.QDialog):

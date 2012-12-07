@@ -15,14 +15,9 @@ Qt = QtCore.Qt
 from sgfs import SGFS
 from sgactions.ticketui import ticket_ui_context
 
-from ..utils import ComboBox, hbox, vbox
-from .. import utils
-from .. import utils as ui_utils
-
-__also_reload__ = [
-    '..utils',
-    '...io.base',
-]
+from sgpublish.ui.utils import ComboBox, hbox, vbox
+from sgpublish import utils
+from sgpublish.ui import utils as ui_utils
 
 
 class TimeSpinner(QtGui.QSpinBox):

@@ -10,12 +10,8 @@ from maya import cmds
 from sgfs import SGFS
 import mayatools.shelf
 
-from .. import utils as ui_utils
-from ... import check
-
-__also_reload__ = [
-    '...check.core',
-]
+from sgpublish.ui import utils as ui_utils
+from sgpublish import check
 
 
 class Dialog(QtGui.QDialog):

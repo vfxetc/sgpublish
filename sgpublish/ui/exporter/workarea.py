@@ -4,11 +4,6 @@ from PyQt4 import QtGui
 
 import sgfs.ui.scene_name.widget as scene_name
 
-__also_reload__ = [
-    'sgfs.ui.scene_name.widget',
-    '.utils',
-]
-
 
 class Widget(scene_name.SceneNameWidget):
     

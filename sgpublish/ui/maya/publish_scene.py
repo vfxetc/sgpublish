@@ -23,20 +23,11 @@ from maya import cmds
 import uifutures
 from sgfs import SGFS
 
-from .. import utils as ui_utils
-from ... import utils
-from ...io import maya as io_maya
-from ..exporter.maya import publish as ui_publish
-from ...io.maya import get_sound_for_frames, get_current_sound
-
-
-__also_reload__ = [
-    '...io.maya',
-    '...utils',
-    '..exporter.maya.publish',
-    '..utils',
-    '..utils',
-]
+from sgpublish.ui import utils as ui_utils
+from sgpublish import utils
+from sgpublish.io import maya as io_maya
+from sgpublish.ui.exporter.maya import publish as ui_publish
+from sgpublish.io.maya import get_sound_for_frames, get_current_sound
 
 
 def basename(src_path=None):    

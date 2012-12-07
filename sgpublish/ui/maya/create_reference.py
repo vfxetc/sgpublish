@@ -10,10 +10,6 @@ from maya import cmds
 from sgfs.ui.picker import presets as picker_presets
 from sgfs import SGFS
 
-__also_reload__ = [
-    'sgfs.ui.picker.presets',
-]
-
 
 class Preview(QtGui.QWidget):
     

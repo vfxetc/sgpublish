@@ -4,7 +4,8 @@ import subprocess
 from sgfs import SGFS
 from sgactions.utils import notify
 
-from .. import versions
+from sgpublish import versions
+
 
 def run(entity_type, selected_ids, **kwargs):
     sgfs = SGFS()

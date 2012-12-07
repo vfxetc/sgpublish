@@ -6,8 +6,6 @@ from . import base
 
 from maya import cmds, mel
 
-__also_reload__ = ['.base']
-
 
 maya_version = int(mel.eval('about -version').split()[0])
 

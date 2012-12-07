@@ -11,13 +11,6 @@ from sgsession import Session, Entity
 from . import utils
 from . import versions
 
-__also_reload__ = [
-    '.utils',
-    '.versions',
-    'sgfs',
-    'sgfs.template',
-]
-
 
 class Publisher(object):
     

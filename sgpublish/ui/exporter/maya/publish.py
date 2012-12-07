@@ -18,18 +18,9 @@ import uifutures
 import mayatools.playblast
 import mayatools.playblast.picker
 
-from ..publish import Widget as Base
-from ... import utils as ui_utils
-from ....io.maya import get_sound_for_frames, get_current_sound
-
-__also_reload__ = [
-    '...utils',
-    '..publish',
-    '....io.maya',
-    'mayatools.playblast',
-    'mayatools.playblast.picker',
-    'uifutures',
-]
+from sgpublish.ui.exporter.publish import Widget as Base
+from sgpublish.ui import utils as ui_utils
+from sgpublish.io.maya import get_sound_for_frames, get_current_sound
 
 
 # Calling this too much can lead to "inturrpted system calls". Huh.
