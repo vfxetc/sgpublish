@@ -5,3 +5,4 @@
 -e git://github.com/westernx/sgfs.git@master#egg=sgfs
 
 PyYaml
+futures
