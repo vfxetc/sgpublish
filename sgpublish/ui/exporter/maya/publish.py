@@ -20,7 +20,7 @@ import mayatools.playblast.picker
 
 from sgpublish.ui.exporter.publish import Widget as Base
 from sgpublish.ui import utils as ui_utils
-from sgpublish.io.maya import get_sound_for_frames, get_current_sound
+from sgpublish.exporter.maya import get_sound_for_frames, get_current_sound
 
 
 # Calling this too much can lead to "inturrpted system calls". Huh.
