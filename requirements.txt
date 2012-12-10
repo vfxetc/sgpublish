@@ -3,6 +3,7 @@
 -e git://github.com/westernx/sgmock.git@master#egg=sgmock
 -e git://github.com/westernx/sgsession.git@master#egg=sgsession
 -e git://github.com/westernx/sgfs.git@master#egg=sgfs
+-e git://github.com/westernx/uifutures.git@master#egg=uifutures
 
 PyYaml
 futures
