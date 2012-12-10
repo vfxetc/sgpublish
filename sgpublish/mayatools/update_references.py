@@ -10,7 +10,7 @@ from maya import cmds
 from sgfs import SGFS
 import mayatools.shelf
 
-from sgpublish.ui import utils as ui_utils
+from sgpublish import uiutils as ui_utils
 from sgpublish import check
 
 

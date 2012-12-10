@@ -79,7 +79,7 @@ def icon(name, size=None, as_icon=False):
     except KeyError:
     
         path = os.path.abspath(os.path.join(__file__, 
-            '..', '..', '..',
+            '..', '..',
             'art', 'icons', name + (os.path.splitext(name)[1] or '.png')
         ))
 

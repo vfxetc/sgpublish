@@ -1,1 +1,1 @@
-from .generic import &
+from .generic import Widget

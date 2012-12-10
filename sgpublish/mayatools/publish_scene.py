@@ -23,10 +23,10 @@ from maya import cmds
 import uifutures
 from sgfs import SGFS
 
-from sgpublish.ui import utils as ui_utils
+from sgpublish import uiutils as ui_utils
 from sgpublish import utils
 from sgpublish.exporter import maya as io_maya
-from sgpublish.exporter.ui.maya import publish as ui_publish
+from sgpublish.exporter.ui.publish import maya as ui_publish
 from sgpublish.exporter.maya import get_sound_for_frames, get_current_sound
 
 

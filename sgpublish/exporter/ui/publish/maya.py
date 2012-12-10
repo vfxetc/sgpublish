@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import contextlib
 import os
 import tempfile
@@ -19,7 +21,7 @@ import mayatools.playblast
 import mayatools.playblast.picker
 
 from sgpublish.exporter.ui.publish import Widget as Base
-from sgpublish.ui import utils as ui_utils
+from sgpublish import uiutils as ui_utils
 from sgpublish.exporter.maya import get_sound_for_frames, get_current_sound
 
 
