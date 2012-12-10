@@ -35,7 +35,7 @@ class TestBasicPublisher(TestCase):
         scene_path = os.path.join(self.sandbox, 'test_scene.ma')
         open(scene_path, 'w').write('this is a dummy scene')
         
-        with Publisher(code='test_scene', type="maya_scene", link=self.task, sgfs=self.sgfs) as publish:
+        with Publisher(name='test_scene', type="maya_scene", link=self.task, sgfs=self.sgfs) as publish:
             publish.add_file(scene_path)
         
         print publish.path
