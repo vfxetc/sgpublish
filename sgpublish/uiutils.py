@@ -97,3 +97,4 @@ def icon(name, size=None, as_icon=False):
         icon = QtGui.QIcon(icon)
     
     return icon
+

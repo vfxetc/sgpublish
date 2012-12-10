@@ -54,3 +54,4 @@ def make_quicktime(movie_path, frames_path, audio_path=None):
         qt.add_audio(movie_path, audio_path)
     
     notify('Your QuickTime is ready.')
+

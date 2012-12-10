@@ -69,3 +69,4 @@ def _update_script_job(good):
     for button in mayatools.shelf.buttons_from_uuid('sgpublish.ui.maya.update_references:run'):
         cmds.shelfButton(button['name'], edit=True,
             image='publishes/check_deps_ok.png' if good else 'publishes/check_deps_bad.png')
+

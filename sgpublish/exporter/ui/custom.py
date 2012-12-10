@@ -25,3 +25,4 @@ class Widget(QtGui.QWidget):
     def export(self, **kwargs):
         path = str(self._path_field.text())
         return self._exporter.export(os.path.dirname(path), path, **kwargs)
+

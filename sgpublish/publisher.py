@@ -391,5 +391,3 @@ class Publisher(object):
     def promote_for_review(self, **kwargs):
         return versions.promote_publish(self.entity, **kwargs)
 
-
-        

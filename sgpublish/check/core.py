@@ -36,3 +36,4 @@ def check_paths(paths):
         ))
     
     return res
+

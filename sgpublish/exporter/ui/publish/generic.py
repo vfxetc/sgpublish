@@ -440,5 +440,4 @@ class Widget(QtGui.QWidget):
         # progress.hide()
         
         return publisher
-        
 

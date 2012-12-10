@@ -176,4 +176,4 @@ def run():
     dialog = Dialog()    
     dialog.show()
     dialog.raise_()
-    
+

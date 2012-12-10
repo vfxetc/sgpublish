@@ -62,3 +62,4 @@ class Widget(QtGui.QTabWidget):
     
     def export(self, **kwargs):
         return self.currentWidget().export(**kwargs)
+
