@@ -102,7 +102,6 @@ class Publisher(object):
                     ('sg_link', 'is', self.link),
                     ('sg_type', 'is', self.type),
                     ('code', 'is', self.name),
-                    ('id', 'less_than', self.entity['id']),
                 ],
                 ['sg_version', 'created_at'],
             )
