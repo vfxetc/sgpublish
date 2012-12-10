@@ -1,6 +1,6 @@
 from PyQt4 import QtGui
 
-from sgpublish.ui.utils import vbox, hbox
+from sgpublish.uiutils import vbox, hbox
 
 
 class Widget(QtGui.QWidget):

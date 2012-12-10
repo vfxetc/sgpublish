@@ -15,7 +15,7 @@ Qt = QtCore.Qt
 from sgfs import SGFS
 from sgactions.ticketui import ticket_ui_context
 
-from sgpublish.ui.utils import ComboBox, hbox, vbox, icon
+from sgpublish.uiutils import ComboBox, hbox, vbox, icon
 
 
 class TimeSpinner(QtGui.QSpinBox):
