@@ -1,3 +1,5 @@
+import os
+
 from sgfs import SGFS
 
 
@@ -5,6 +7,10 @@ class Importer(object):
     
     def __init__(self):
         self.sgfs = SGFS()
+
+    @property
+    def workspace(self):
+        return os.getcwd()
 
     @property
     def existing_publish(self):
@@ -25,7 +31,8 @@ class Importer(object):
         
     def import_publish(self, publish, **kwargs):
         """Passthrough to the :meth:`.import_`."""
-        return self.import_(publish['sg_path'] or publish['sg_directory'], **kwargs)
+        path, directory = publish.fetch(('sg_path', 'sg_directory'))
+        return self.import_(path or directory, **kwargs)
     
     def import_(self, path, **kwargs):
         raise NotImplementedError()
