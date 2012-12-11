@@ -16,7 +16,6 @@ Qt = QtCore.Qt
 
 from maya import cmds
 
-import uifutures
 import mayatools.playblast
 import mayatools.playblast.picker
 
