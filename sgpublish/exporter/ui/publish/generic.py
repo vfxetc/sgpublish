@@ -420,7 +420,7 @@ class Widget(QtGui.QWidget):
     
         if self._promote_checkbox.isChecked():
             # progress.setLabelText('Creating Version for Review...')
-            promotion_fields = self._exporter.promotion_fields(publisher, **kwargs)
+            promotion_fields = self._exporter.fields_for_review_version(publisher, **kwargs)
             print "PROMOTE", promotion_fields
             publisher.promote_for_review(**promotion_fields)
         

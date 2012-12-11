@@ -81,7 +81,7 @@ class Exporter(object):
     def before_export_publish(self, publisher, **kwargs):
         pass
     
-    def promotion_fields(self, publisher, **kwargs):
+    def fields_for_review_version(self, publisher, **kwargs):
         return {}
     
     def export_publish(self, publisher, **kwargs):

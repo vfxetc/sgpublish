@@ -77,7 +77,7 @@ class Exporter(base.Exporter):
             'max_time': cmds.playbackOptions(query=True, maxTime=True),
         }
     
-    def promotion_fields(self, publisher, **kwargs):
+    def fields_for_review_version(self, publisher, **kwargs):
         min_time = cmds.playbackOptions(query=True, minTime=True)
         max_time = cmds.playbackOptions(query=True, maxTime=True)
         return {
