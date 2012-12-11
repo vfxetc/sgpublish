@@ -1,1 +1,52 @@
 - maya.create_reference should only show maya_* publish types.
+
+
+- refactor sgpublish.exporter
+    
+    - Instead of all of the methods passing kwargs around, perhaps there
+      could be an ExportRequest, which would also have many of the extra
+      wacky methods on it.
+
+    - Exporter.promotion_fields -> Exporter.fields_for_review_version
+
+    - Now that we don't nessesarily need the double import phase, can
+      we move to::
+
+        with sgpublish.publish_context(code='whatever', type='maya_scene') as publish:
+            # `publish` is the PublishEvent entity fields already filled
+            # out. Changes made to it will be pushed out assuming no
+            # exceptions are raised. We don't really have a way to set
+            # anything into the SGFS tag metadata, however. Perhaps if we treat
+            # `publish['__metadata__']` as special...
+            pass
+
+        sgpublish.create_version_for_review(publish, **fields)
+
+    - Maya extensions should be mixins?
+
+        class CameraExporter(MayaExporterMixin, base.Exporter)
+
+- class sgpublish.exporter.ui.dialog.Dialog(QtGui.QDialog):
+    
+    # Uses this as the exporter, AND to set base title, amoung other
+    # things.
+    exporter_class = MayaSceneExporter
+
+    - Dialog.class_factory(name=None, **set_on_new_class)(**pass_to_exporter)
+      Although, this is really the same as type('MyDialog', (Dialog, ), set_on_new_class)
+
+    sgpublish.exporter.ui.dialog.maya.Dialog has the base maya extensions
+
+    Perhaps this is what dependency injection is made for?
+
+
+- sgpublish.importer
+    
+    - Importer
+        .import_publish(publish, **kwargs) -> .import_(publish['sg_path'] or publish['sg_directory'], **kwargs)
+        .import_(path, **kwargs)
+    - ImportTabWidget
+        - proxy to .import_ on the current tab
+        - setPath iterates across the tabs calling setPath, and the last
+          one to return True is selected
+    - ImportPublish.import_(**kwargs) -> self.importer.import_publish(publish, **kwargs)
