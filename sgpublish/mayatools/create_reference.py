@@ -69,9 +69,11 @@ class Preview(QtGui.QWidget):
 
 class Dialog(QtGui.QDialog):
     
-    def __init__(self):
+    def __init__(self, path=None, custom_namespace=True):
         super(Dialog, self).__init__()
         self._node = None
+        self._path = path
+        self._custom_namespace = custom_namespace
         self._setup_ui()
     
     def _setup_ui(self):
@@ -79,7 +81,7 @@ class Dialog(QtGui.QDialog):
         
         self.setLayout(QtGui.QVBoxLayout())
         
-        workspace = cmds.workspace(q=True, rootDirectory=True)
+        workspace = self._path or cmds.workspace(q=True, rootDirectory=True)
         self._model, self._picker = picker_presets.publishes_from_path(workspace)
         self._picker.setMaximumHeight(400)
         self._picker.nodeChanged = self._on_node_changed
@@ -88,8 +90,9 @@ class Dialog(QtGui.QDialog):
         button_layout = QtGui.QHBoxLayout()
         
         self._namespace_field = QtGui.QLineEdit()
-        button_layout.addWidget(QtGui.QLabel("Namespace:"))
-        button_layout.addWidget(self._namespace_field)
+        if self._custom_namespace:
+            button_layout.addWidget(QtGui.QLabel("Namespace:"))
+            button_layout.addWidget(self._namespace_field)
         
         button_layout.addStretch()
         self.layout().addLayout(button_layout)
@@ -121,7 +124,7 @@ class Dialog(QtGui.QDialog):
                         last_publish['sg_link'] is not publish['sg_link'] or
                         last_publish['code'] != publish['code']
         ):
-            
+
             # Find a name which doesn't clash.
             namespace = publish['code']
             existing = self._existing_namespaces()
@@ -148,17 +151,27 @@ class Dialog(QtGui.QDialog):
         publish = self._node.state['PublishEvent']
         path = publish.fetch('sg_path')
         
-        # Make sure the namespace doesn't already exist
-        namespace = str(self._namespace_field.text())
-        if namespace in self._existing_namespaces():
-            QtGui.QMessageBox.critical(None, 'Namespace Collision',
-                'There is already a reference in the scene with that namespace.'
-            )
-            return
+        if self._custom_namespace:
+
+            # Make sure the namespace doesn't already exist
+            namespace = str(self._namespace_field.text())
+            if namespace in self._existing_namespaces():
+                QtGui.QMessageBox.critical(None, 'Namespace Collision',
+                    'There is already a reference in the scene with that namespace.'
+                )
+                return
+
+        else:
+
+            namespace = None
         
+        self._do_reference(path, namespace)
+        self.hide()
+
+    def _do_reference(self, path, namespace):
+
         # Reference the file.
         cmds.file(path, reference=True, namespace=namespace)
-        self.hide()
     
 def __before_reload__():
     if dialog:

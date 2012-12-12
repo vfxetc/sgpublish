@@ -18,11 +18,13 @@ class PublishImporter(QtGui.QWidget):
     def _setup_ui(self):
 
         self.setLayout(QtGui.QVBoxLayout())
+        self.layout().setContentsMargins(0, 0, 0, 0)
 
         self._model, self._picker = picker_presets.publishes_from_path(
             self._importer.workspace,
             publish_types=['maya_camera'],
         )
+        self._picker.setFrameStyle(QtGui.QFrame.NoFrame)
         self._picker.setMaximumHeight(150)
         self._picker.setColumnWidths([150] * 10)
         self._picker.setMaximumWidth(150 * 4 + 2)
@@ -39,4 +41,4 @@ class PublishImporter(QtGui.QWidget):
     def import_(self):
         publish = self._picker.currentState()['PublishEvent']
         self._importer.import_publish(publish)
-    
+

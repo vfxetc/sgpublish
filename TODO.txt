@@ -45,8 +45,14 @@
     - Importer
         .import_publish(publish, **kwargs) -> .import_(publish['sg_path'] or publish['sg_directory'], **kwargs)
         .import_(path, **kwargs)
-    - ImportTabWidget
-        - proxy to .import_ on the current tab
-        - setPath iterates across the tabs calling setPath, and the last
-          one to return True is selected
+
+    - ImportWidget(s) (e.g. WorkImportWidget, PublishImportWidget, etc.)
+
+        - initialize themselves from the importer.existing_path
+
+        - pathChanged signal
+            Emit this signal whenever the path changes, or it transitions
+            to a state that is not ready (indicated by None).
+
+
     - ImportPublish.import_(**kwargs) -> self.importer.import_publish(publish, **kwargs)

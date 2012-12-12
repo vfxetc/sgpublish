@@ -10,8 +10,10 @@ from maya import cmds
 from sgfs import SGFS
 import mayatools.shelf
 
+
 from sgpublish import uiutils as ui_utils
 from sgpublish import check
+from sgpublish.mayatools import create_reference
 
 
 class Dialog(QtGui.QDialog):
@@ -47,37 +49,77 @@ class Dialog(QtGui.QDialog):
     
     def _populate_references(self):
         
-        reference_statuses = check.check_paths(cmds.file(q=True, reference=True))
+        sgfs = SGFS()
+
+        reference_statuses = check.check_paths(cmds.file(q=True, reference=True), only_published=False)
         for reference in reference_statuses:
             
             path = reference.path
             publish = reference.used
-            task = publish.parent()
-            entity = task.parent()
+
+            if publish:
+                task = publish.parent()
+            else:
+                tasks = sgfs.entities_from_path(path, 'Task')
+                task = tasks[0] if tasks else None
+
+            if task:
+                task.fetch(('step.Step.code', 'content'))
+                entity = task.parent()
+            else:
+                entities = sgfs.entities_from_path(path, set(('Asset', 'Shot')))
+                entity = entities[0] if entities else None
+
             siblings = reference.all
             
             namespace = cmds.file(path, q=True, namespace=True)
             node = cmds.referenceQuery(path, referenceNode=True)
-            item = QtGui.QTreeWidgetItem([
-                namespace,
-                entity['code'],
-                task.fetch('step.Step.code'),
-                task['content'],
-                publish['sg_type'],
-                publish['code'],
-                'v%04d' % publish['sg_version']
-            ])
-            item.setIcon(0, ui_utils.icon('silk/tick' if reference.is_latest else 'silk/cross', size=12, as_icon=True))
-            item.setData(0, Qt.UserRole, {'publish': publish, 'siblings': siblings})
+
+            if publish:
+
+                item = QtGui.QTreeWidgetItem([
+                    namespace,
+                    entity['code'],
+                    task['step.Step.code'],
+                    task['content'],
+                    publish['sg_type'],
+                    publish['code'],
+                    'COMBOBOX',
+                ])
+                item.setIcon(0, ui_utils.icon('silk/tick' if reference.is_latest else 'silk/cross', size=12, as_icon=True))
+                # item.setData(0, Qt.UserRole, {'publish': publish, 'siblings': siblings})
             
-            combo = QtGui.QComboBox()
-            for i, sibling in enumerate(siblings):
-                combo.addItem('v%04d' % sibling['sg_version'], sibling)
-                if sibling['sg_version'] == publish['sg_version']:
-                    combo.setCurrentIndex(i)
-            combo.currentIndexChanged.connect(functools.partial(self._combo_changed, node, siblings))
+            else:
+
+                item = QtGui.QTreeWidgetItem([
+                    namespace,
+                    entity['code'] if entity else '-',
+                    task['step.Step.code'] if task else '-',
+                    task['content'] if task else '-',
+                    '-',
+                    '-',
+                    'BUTTON',
+                ])
+                item.setIcon(0, ui_utils.icon('silk/help', size=12, as_icon=True))
+
             self._tree.addTopLevelItem(item)
-            self._tree.setItemWidget(item, 6, combo)
+
+            if publish:
+
+                combo = QtGui.QComboBox()
+                for i, sibling in enumerate(siblings):
+                    combo.addItem('v%04d' % sibling['sg_version'], sibling)
+                    if sibling['sg_version'] == publish['sg_version']:
+                        combo.setCurrentIndex(i)
+                combo.currentIndexChanged.connect(functools.partial(self._combo_changed, node, siblings))
+                self._tree.setItemWidget(item, 6, combo)
+
+            else:
+
+                button = QtGui.QPushButton("Pick a Publish")
+                button.clicked.connect(functools.partial(self._pick_publish, path, node))
+                self._tree.setItemWidget(item, 6, button)
+
         
         for i in range(7):
             self._tree.resizeColumnToContents(i)
@@ -94,6 +136,21 @@ class Dialog(QtGui.QDialog):
             options='v=0',
         )
         #publish.fetch('sg_path'), namespace=namespace, reference=True)
+    
+    def _pick_publish(self, path, node, *args):
+        self._picker = create_reference.Dialog(path=path, custom_namespace=False)
+        self._picker._button.setText('Pick a Publish')
+        self._picker._do_reference = functools.partial(self._do_picker_reference, node)
+        self._picker.show()
+
+    def _do_picker_reference(self, node, path, namespace):
+        print '#', node, 'to', path
+        cmds.file(
+            path,
+            loadReference=node,
+            type='mayaAscii' if path.endswith('.ma') else 'mayaBinary',
+            options='v=0',
+        )
 
 
 def __before_reload__():
