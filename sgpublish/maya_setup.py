@@ -19,7 +19,12 @@ def standard_setup():
         ('after_open', OpenMaya.MSceneMessage.kAfterOpen),
         ('after_save', OpenMaya.MSceneMessage.kAfterSave),
         ('after_create_ref', OpenMaya.MSceneMessage.kAfterCreateReference),
-        ('after_load_ref', OpenMaya.MSceneMessage.kAfterLoadReference),
+
+        # We used to have kAfterLoadReference in here too, but for now it is
+        # a relatively corner case for it to not be paired with creating a
+        # reference, and the logic is clever enough to stack several update
+        # requests together.
+
     ]:
         __mayatools_usersetup__['name'] = OpenMaya.MSceneMessage.addCallback(
             type_,
