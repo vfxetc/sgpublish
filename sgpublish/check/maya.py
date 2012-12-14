@@ -12,8 +12,8 @@ from uitools.threads import defer_to_main_thread, call_in_main_thread
 from .core import check_paths
 
 
-_issued_warnings = set()
 _check_lock = threading.Lock()
+
 
 def start_background_check(*args):
     print '# Starting publish background check...'
