@@ -1,0 +1,1 @@
+sgpublish/maya_setup.py

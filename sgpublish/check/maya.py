@@ -7,66 +7,55 @@ import time
 from maya import cmds
 
 import mayatools.shelf
+from uitools.threads import defer_to_main_thread, call_in_main_thread
 
 from .core import check_paths
 
 
-def __before_reload__():
-    return register_hook._script_job, register_hook._thread_target
-def __after_reload__(state):
-    register_hook._script_job, register_hook._thread_target = state
+_issued_warnings = set()
+_check_lock = threading.Lock()
+
+def start_background_check(*args):
+    print '# Starting publish background check...'
+    defer_to_main_thread(_update_buttons, None)
+    references = call_in_main_thread(cmds.file, q=True, reference=True)
+    threading.Thread(target=_background_check, args=[references]).start()
 
 
-class _update_thread_target(object):
-    
-    def __init__(self):
-        self.stop = False
-        self.delay = 5 * 60
-    
-    def __call__(self):
-        while not self.stop:
-            time.sleep(self.delay)
-            if self.stop:
-                break
-            update_buttons()
+def _background_check(references):
 
+    with _check_lock:
 
-def register_hook():
-    
-    if register_hook._script_job:
-        cmds.scriptJob(kill=register_hook._script_job, force=True)
-    if register_hook._thread_target:
-        register_hook._thread_target.stop = True
-    
-    register_hook._script_job = cmds.scriptJob(event=('SceneOpened', update_buttons))
-    
-    register_hook._thread_target = _update_thread_target()
-    register_hook._thread = threading.Thread(target=register_hook._thread_target)
-    register_hook._thread.daemon = False
-    register_hook._thread.start()
-    
-register_hook._script_job = None
-register_hook._thread_target = None
+        statuses = check_paths(references, only_published=True)
+        if not statuses:
+            print '# No publishes are referenced.'
+            defer_to_main_thread(_update_buttons, True)
+            return
 
+        out_of_date = []
+        good = 0
+        for status in statuses:
+            if status.is_latest:
+                good += 1
+            else:
+                out_of_date.append(status)
 
-def update_buttons():
+        if not out_of_date:
+            print '# None of the %d publishes are out of date.' % good
+            defer_to_main_thread(_update_buttons, True)
+            return
+
+        print '# %d publishes are out of date.' % len(out_of_date)
+        defer_to_main_thread(_update_buttons, False)
+
     
-    print 'setting to yello'
-    # Reset to yellow
-    for button in mayatools.shelf.buttons_from_uuid('sgpublish.ui.maya.update_references:run'):
-        print button['name']
-        cmds.shelfButton(button['name'], edit=True, image='publishes/check_deps_unknown.png')
-    
-    # Spawn a job.
-    threading.Thread(target=_update_thread_target).start()
-    
-def _update_thread_target():
-    time.sleep(1)
-    cmds.scriptJob(idleEvent=functools.partial(_update_script_job, True), runOnce=True)
-    
-def _update_script_job(good):
-    print 'setting to', good
-    for button in mayatools.shelf.buttons_from_uuid('sgpublish.ui.maya.update_references:run'):
-        cmds.shelfButton(button['name'], edit=True,
-            image='publishes/check_deps_ok.png' if good else 'publishes/check_deps_bad.png')
+def _update_buttons(status):
+    image = {
+        None: 'publishes/check_deps_unknown.png',
+        True: 'publishes/check_deps_ok.png',
+        False: 'publishes/check_deps_bad.png'
+    }[status]
+    print '# Setting button image to', image
+    for button in mayatools.shelf.buttons_from_uuid('sgpublish.mayatools.update_references:run'):
+        cmds.shelfButton(button['name'], edit=True, image=image)
 
