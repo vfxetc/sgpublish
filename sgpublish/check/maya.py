@@ -47,7 +47,7 @@ def _background_check(references):
 
         # print '# %d publishes are out of date.' % len(out_of_date)
         defer_to_main_thread(_update_buttons, False)
-        defer_to_main_thread(cmds.warning, '%d publishe(s) are out of date.' % len(out_of_date))
+        defer_to_main_thread(cmds.warning, '%d publish(es) are out of date.' % len(out_of_date))
 
     
 def _update_buttons(status):
