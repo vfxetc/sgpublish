@@ -16,7 +16,7 @@ _check_lock = threading.Lock()
 
 
 def start_background_check(*args):
-    print '# Starting publish background check...'
+    # print '# Starting publish background check...'
     defer_to_main_thread(_update_buttons, None)
     references = call_in_main_thread(cmds.file, q=True, reference=True)
     threading.Thread(target=_background_check, args=[references]).start()
@@ -28,7 +28,7 @@ def _background_check(references):
 
         statuses = check_paths(references, only_published=True)
         if not statuses:
-            print '# No publishes are referenced.'
+            # print '# No publishes are referenced.'
             defer_to_main_thread(_update_buttons, True)
             return
 
@@ -41,12 +41,13 @@ def _background_check(references):
                 out_of_date.append(status)
 
         if not out_of_date:
-            print '# None of the %d publishes are out of date.' % good
+            # print '# None of the %d publishes are out of date.' % good
             defer_to_main_thread(_update_buttons, True)
             return
 
-        print '# %d publishes are out of date.' % len(out_of_date)
+        # print '# %d publishes are out of date.' % len(out_of_date)
         defer_to_main_thread(_update_buttons, False)
+        defer_to_main_thread(cmds.warning, '%d publishe(s) are out of date.' % len(out_of_date))
 
     
 def _update_buttons(status):
@@ -55,7 +56,7 @@ def _update_buttons(status):
         True: 'publishes/check_deps_ok.png',
         False: 'publishes/check_deps_bad.png'
     }[status]
-    print '# Setting button image to', image
+    # print '# Setting button image to', image
     for button in mayatools.shelf.buttons_from_uuid('sgpublish.mayatools.update_references:run'):
         cmds.shelfButton(button['name'], edit=True, image=image)
 
