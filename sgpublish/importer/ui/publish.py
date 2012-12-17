@@ -31,8 +31,12 @@ class PublishImporter(QtGui.QWidget):
         self._picker.setPreviewVisible(False)
         self.layout().addWidget(self._picker)
 
+    def path(self):
+        entity = self._picker.currentState().get('PublishEvent')
+        return entity.get('sg_directory') or self._picker.model().sgfs.path_for_entity(entity)
+
     def setPath(self, path):
-        pass
+        return self._picker.setEntityFromPath(path, 'PublishEvent')
 
     def isReady(self):
         data = self._picker.currentState()

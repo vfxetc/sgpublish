@@ -42,7 +42,7 @@ class ImportTabs(QtGui.QTabWidget):
     def sizeHint(self):
         
         if not self._auto_adjust:
-            return super(Widget, self).sizeHint()
+            return super(ImportTabs, self).sizeHint()
         
         bar = self.tabBar()
         widget = self.currentWidget()
@@ -57,8 +57,11 @@ class ImportTabs(QtGui.QTabWidget):
     
     def minimumSizeHint(self):
         if not self._auto_adjust:
-            return super(Widget, self).minimumSizeHint()
+            return super(ImportTabs, self).minimumSizeHint()
         return self.sizeHint()
+    
+    def path(self):
+        return self.currentWidget().path()
     
     def setPath(self, path):
         last_satisfied = None

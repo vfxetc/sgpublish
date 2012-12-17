@@ -7,11 +7,11 @@ from sgfs.ui import product_select
 
 class WorkAreaImporter(QtGui.QWidget):
     
-    def __init__(self, importer):
+    def __init__(self, importer, selector=None):
         super(WorkAreaImporter, self).__init__()
 
         self._importer = importer
-        self._selector = product_select.Layout(self)
+        self._selector = selector or product_select.Layout(self)
 
         self.setLayout(QtGui.QVBoxLayout())
         self.layout().addLayout(self._selector)
@@ -28,6 +28,9 @@ class WorkAreaImporter(QtGui.QWidget):
         path = self._selector.path()
         return self._importer.import_(path, **kwargs)
 
+    def path(self):
+        return self._selector.path()
+    
     def setPath(self, path):
         return self._selector.setPath(path, allow_partial=True)
 
