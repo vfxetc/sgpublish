@@ -16,11 +16,16 @@ def standard_setup():
         sgpublish.check.maya.start_background_check()
 
     for name, type_ in [
-        ('after_open', OpenMaya.MSceneMessage.kAfterOpen),
-        ('after_save', OpenMaya.MSceneMessage.kAfterSave),
-        ('after_create_ref', OpenMaya.MSceneMessage.kAfterCreateReference),
 
-        # We used to have kAfterLoadReference in here too, but for now it is
+        ('after_open', OpenMaya.MSceneMessage.kAfterOpen),
+
+        # TODO: Re-enable this one when we know the general uitools.threads stuff
+        # is stable, since a crash while saving is tremendously bad.
+
+        # ('after_save', OpenMaya.MSceneMessage.kAfterSave),
+
+        # We used to have kAfterCreateRererence and kAfterLoadReference in here
+        # too, but for now it is
         # a relatively corner case for it to not be paired with creating a
         # reference, and the logic is clever enough to stack several update
         # requests together.
