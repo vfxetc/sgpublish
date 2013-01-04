@@ -8,7 +8,34 @@ Qt = QtCore.Qt
 from maya import cmds
 
 from sgfs.ui.picker import presets as picker_presets
+from sgfs.ui.picker.nodes.base import Node as BaseNode
 from sgfs import SGFS
+
+
+class ScenePickerNode(BaseNode):
+
+    @staticmethod
+    def is_next_node(state):
+        if 'maya_scene' in state:
+            return False
+        if 'self' not in state:
+            return False
+        if state['self']['type'] != 'PublishEvent':
+            return False
+        path = state['self'].fetch('sg_path')
+        if os.path.exists(path) and os.path.isdir(path):
+            return True
+        return False
+
+    def fetch_children(self):
+        directory = self.state['self']['sg_path']
+        file_names = os.listdir(directory)
+        file_names = [x for x in file_names if not x.startswith('.')]
+        file_names = [x for x in file_names if os.path.splitext(x)[1] in ('.ma', '.mb')]
+
+        for file_name in file_names:
+            scene_name = os.path.splitext(file_name)[0]
+            yield scene_name, {Qt.DisplayRole: scene_name}, {'maya_scene': os.path.join(directory, file_name)}
 
 
 class Preview(QtGui.QWidget):
@@ -83,6 +110,7 @@ class Dialog(QtGui.QDialog):
         
         workspace = self._path or cmds.workspace(q=True, rootDirectory=True)
         self._model, self._picker = picker_presets.publishes_from_path(workspace)
+        self._model.register_node_type(ScenePickerNode)
         self._picker.setMaximumHeight(400)
         self._picker.nodeChanged = self._on_node_changed
         self.layout().addWidget(self._picker)
@@ -148,8 +176,10 @@ class Dialog(QtGui.QDialog):
         
     def _on_create_reference(self):
         
-        publish = self._node.state['PublishEvent']
-        path = publish.fetch('sg_path')
+        path = self._node.state.get('maya_scene')
+        if not path:
+            publish = self._node.state['PublishEvent']
+            path = publish.fetch('sg_path')
         
         if self._custom_namespace:
 
