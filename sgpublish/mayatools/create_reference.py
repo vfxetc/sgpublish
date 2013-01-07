@@ -59,28 +59,39 @@ class Preview(QtGui.QWidget):
         
         self._created_by_label = QtGui.QLabel()
         form.addRow("<b>By:</b>", self._created_by_label)
+
         self._created_at_label = QtGui.QLabel()
         form.addRow("<b>At:</b>", self._created_at_label)
+
         self._description_label = QtGui.QLabel()
         self._description_label.setWordWrap(True)
         form.addRow("<b>Desc:</b>", self._description_label)
+
+        self._timeRangeLabel = QtGui.QLabel()
+        form.addRow("<b>Time Range:</b>", self._timeRangeLabel)
         
         self.layout().addStretch()
     
     def update(self, entity):
         
-        # Do this async.
+        # TODO: Do this async.
         by, at, desc = entity.fetch(('created_by.HumanUser.name', 'created_at', 'description'))
         self._created_by_label.setText(str(by))
         self._created_at_label.setText(str(at.strftime('%y-%m-%d %I:%M %p')))
         self._description_label.setText(str(desc))
         
+        sgfs = SGFS(session=entity.session)
+        path = sgfs.path_for_entity(entity)
+        tags = sgfs.get_directory_entity_tags(path)
+        tags = [t for t in tags if t['entity'] is entity]
+        tag = tags[0]
+
+        maya_data = tag.get('maya', {})
+        time_range = '%s - %s' % (maya_data.get('min_time'), maya_data.get('max_time'))
+        self._timeRangeLabel.setText(time_range)
+        
         if entity not in self._pixmaps:
-            sgfs = SGFS(session=entity.session)
-            path = sgfs.path_for_entity(entity)
-            tags = sgfs.get_directory_entity_tags(path)
-            tags = [t for t in tags if t['entity'] is entity]
-            thumbnail_path = tags[0].get('sgpublish', {}).get('thumbnail') if tags else None
+            thumbnail_path = tag.get('sgpublish', {}).get('thumbnail') if tags else None
             thumbnail_path = thumbnail_path or os.path.join(path, '.sgfs.thumbnail.jpg')
             if os.path.exists(thumbnail_path):
                 pixmap = QtGui.QPixmap(thumbnail_path)
