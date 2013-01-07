@@ -68,7 +68,7 @@ class Preview(QtGui.QWidget):
         form.addRow("<b>Desc:</b>", self._description_label)
 
         self._timeRangeLabel = QtGui.QLabel()
-        form.addRow("<b>Time Range:</b>", self._timeRangeLabel)
+        form.addRow("<b>Frames:</b>", self._timeRangeLabel)
         
         self.layout().addStretch()
     
