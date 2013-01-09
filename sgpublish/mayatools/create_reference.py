@@ -75,7 +75,7 @@ class Preview(QtGui.QWidget):
     def update(self, entity):
         
         # TODO: Do this async.
-        by, at, desc = entity.fetch(('created_by.HumanUser.name', 'created_at', 'description'))
+        by, at, desc = entity.fetch(('created_by.HumanUser.name', 'created_at', 'description'), force=True)
         self._created_by_label.setText(str(by))
         self._created_at_label.setText(str(at.strftime('%y-%m-%d %I:%M %p')))
         self._description_label.setText(str(desc))
