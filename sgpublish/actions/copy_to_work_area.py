@@ -35,7 +35,7 @@ class Dialog(QtGui.QDialog):
         self._model, self._picker = picker_presets.any_task(entity=self._publish['sg_link'])
         self._picker.setMaximumHeight(400)
         self._picker.setPreviewVisible(False)
-        self._picker.nodeChanged = self._on_node_changed
+        self._picker.nodeChanged.connect(self._on_node_changed)
         self.layout().addWidget(self._picker)
 
         workspace = self._sgfs.path_for_entity(self._publish)
