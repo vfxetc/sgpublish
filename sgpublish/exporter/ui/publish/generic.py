@@ -289,8 +289,13 @@ class Widget(QtGui.QWidget):
             return
         
         files = dialog.selectedFiles()
-        path = str(files.first())
+        path = str(files.First())
+        self.setFrames(path)
+
+    def setFrames(self, path):
         self._movie_path.setText(path)
+        if path:
+            self._promote_checkbox.setCheckState(Qt.Checked)
         
     def take_full_screenshot(self):
         pass

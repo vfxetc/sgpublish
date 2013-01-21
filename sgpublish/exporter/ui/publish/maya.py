@@ -174,7 +174,7 @@ class Widget(Base):
     def setFrames(self, path):
         
         # The easy part.
-        self._movie_path.setText(path)
+        super(Widget, self).setFrames(path)
         
         # Open a viewer, and wait for it to close.
         sound_path = get_sound_for_frames(path) or get_current_sound()
