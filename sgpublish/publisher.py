@@ -5,6 +5,7 @@ import itertools
 
 import concurrent.futures
 
+from shotgun_api3.shotgun import Fault as ShotgunFault
 from sgfs import SGFS
 from sgsession import Session, Entity
 
@@ -105,20 +106,26 @@ class Publisher(object):
                 ],
                 ['sg_version', 'created_at'],
             )
-        
+
         # First stage of the publish: create an "empty" PublishEvent.
-        self.entity = self.sgfs.session.create('PublishEvent', {
-            'code': self.name,
-            'created_by': self.created_by,
-            'description': self.description,
-            'project': self.link.project(),
-            'sg_link': link,
-            'sg_path_to_frames': self.frames_path,
-            'sg_path_to_movie': self.movie_path,
-            'sg_qt': self.movie_url,
-            'sg_type': self.type,
-            'sg_version': 0, # Signifies that this is "empty".
-        })
+        try:
+            self.entity = self.sgfs.session.create('PublishEvent', {
+                'code': self.name,
+                'created_by': self.created_by,
+                'description': self.description,
+                'project': self.link.project(),
+                'sg_link': self.link,
+                'sg_path_to_frames': self.frames_path,
+                'sg_path_to_movie': self.movie_path,
+                'sg_qt': self.movie_url,
+                'sg_type': self.type,
+                'sg_version': 0, # Signifies that this is "empty".
+            })
+        except ShotgunFault:
+            if not self.link.exists():
+                raise RuntimeError('%s %d ("%s") has been retired' % (link['type'], link['id']))
+            else:
+                raise
         
         # Manually forced version number.
         if version is not None:
