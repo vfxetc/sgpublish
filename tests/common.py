@@ -23,6 +23,8 @@ from sgsession import Session, Entity
 from sgfs import SGFS
 from sgpublish import Publisher
 
+from mayatools.test import requires_maya
+
 
 if sys.version_info < (2, 6):
     def next(iter_, *args):
