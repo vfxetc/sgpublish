@@ -1,13 +1,19 @@
-- maya.create_reference should only show maya_* publish types.
 
-
-- refactor sgpublish.exporter
+- refactor sgpublish.publisher.Publisher
     
+    - There is too much attempted forsight in this class, doing lots of things
+      that we do not need it to do. Perhaps, we should revert to directly
+      manipulating PublishEvents, or to have a function create a base for us
+      from sgfs templates.
+
+    sgpublish.create_publish_directory(type_, name, version)
+        - creates a uniquely named directory based off of SGFS templates
+    
+    - A SGFS.create_and_tag('PublishEvent', sg_data, tag_data)
+
     - Instead of all of the methods passing kwargs around, perhaps there
       could be an ExportRequest, which would also have many of the extra
       wacky methods on it.
-
-    - Exporter.promotion_fields -> Exporter.fields_for_review_version
 
     - Now that we don't nessesarily need the double import phase, can
       we move to::
@@ -25,6 +31,7 @@
     - Maya extensions should be mixins?
 
         class CameraExporter(MayaExporterMixin, base.Exporter)
+
 
 - class sgpublish.exporter.ui.dialog.Dialog(QtGui.QDialog):
     
