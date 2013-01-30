@@ -400,15 +400,16 @@ class Widget(QtGui.QWidget):
         
     def export(self, **kwargs):
         with ticket_ui_context():
-            return self.__export(kwargs)
+            return self._export(kwargs)
     
-    def __export(self, kwargs):
+    def _export(self, kwargs):
     
         if not self.safety_check(**kwargs):
             return
         
         task_data = self._task_combo.currentData()
         task = task_data.get('task')
+
         if not task:
             sgfs = SGFS()
             tasks = sgfs.entities_from_path(self._exporter.workspace, 'Task')

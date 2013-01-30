@@ -18,6 +18,7 @@ from maya import cmds
 
 import mayatools.playblast
 import mayatools.playblast.picker
+from mayatools.tickets import ticket_ui_context
 
 from sgpublish.exporter.ui.publish import Widget as Base
 from sgpublish import uiutils as ui_utils
@@ -219,4 +220,8 @@ class Widget(Base):
         if self._viewer_msgbox:
             self._viewer_msgbox.hide()
             self._viewer_msgbox = None
+
+    def export(self, **kwargs):
+        with ticket_ui_context():
+            return self._export(kwargs)
 
