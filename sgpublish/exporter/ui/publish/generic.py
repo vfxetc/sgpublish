@@ -93,8 +93,9 @@ class Widget(QtGui.QWidget):
         self._name_combo.addItem('Create new stream...', {'new': True})
         self._name_combo.currentIndexChanged.connect(self._name_changed)
         
+        self._tasksLabel = QtGui.QLabel("Task")
         self.layout().addLayout(hbox(
-            vbox("Task", self._task_combo),
+            vbox(self._tasksLabel, self._task_combo),
             vbox("Publish Stream", self._name_combo),
             spacing=4
         ))
@@ -194,10 +195,16 @@ class Widget(QtGui.QWidget):
         
     def _populate_existing_data(self, tasks, publishes):
         
+        if tasks:
+            entity = tasks[0].fetch('entity')
+            name = entity.get('code') or entity.get('name')
+            if name:
+                self._tasksLabel.setText('Task on %s %s' % (entity['type'], name))
+
         history = self._exporter.get_previous_publish_ids()
         
         select = None
-        
+
         self._existing_names.update(p['code'] for p in publishes)
         publishes.sort(key=lambda p: p['sg_version'])
         
@@ -211,7 +218,7 @@ class Widget(QtGui.QWidget):
                 
                 if publish['id'] in history:
                     select = t_i, name
-            
+
             self._task_combo.addItem('%s - %s' % task.fetch(('step.Step.short_name', 'content')), {
                 'task': task,
                 'publishes': name_to_publish,
