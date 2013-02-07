@@ -47,6 +47,7 @@ class Preview(QtGui.QWidget):
     
     def _setup_ui(self):
         
+        self.setMinimumWidth(200)
         self.setLayout(QtGui.QVBoxLayout())
         
         self._thumbnail = QtGui.QLabel('')
