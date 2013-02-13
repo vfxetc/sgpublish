@@ -1,7 +1,7 @@
 import functools
 import os
-import platform
 import subprocess
+import sys
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
@@ -40,7 +40,7 @@ vbox = lambda *args, **kwargs: _box(QtGui.QVBoxLayout(**kwargs), *args)
 
 
 def call_open(x):
-    if platform.system() == 'Darwin':
+    if sys.platform.startswith('darwin'):
         subprocess.call(['open', x])
     else:
         subprocess.call(['xdg-open', x])

@@ -3,9 +3,9 @@ from __future__ import absolute_import
 import functools
 import os
 import re
+import sys
 import tempfile
 import traceback
-import platform
 import subprocess
 import datetime
 
@@ -312,7 +312,7 @@ class Widget(QtGui.QWidget):
 
         self.beforeScreenshot.emit()
         
-        if platform.system() == "Darwin":
+        if sys.platform.startswith('darwin'):
             # use built-in screenshot command on the mac
             proc = subprocess.Popen(['screencapture', '-mis', path])
         else:

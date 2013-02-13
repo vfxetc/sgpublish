@@ -9,7 +9,7 @@ import glob
 import time
 import datetime
 import re
-import platform
+import sys
 
 from PyQt4 import QtGui, QtCore
 Qt = QtCore.Qt
@@ -23,10 +23,6 @@ from mayatools.tickets import ticket_ui_context
 from sgpublish.exporter.ui.publish import Widget as Base
 from sgpublish import uiutils as ui_utils
 from sgpublish.exporter.maya import get_sound_for_frames, get_current_sound
-
-
-# Calling this too much can lead to "inturrpted system calls". Huh.
-platform_system = platform.system()
 
 
 class PlayblastPicker(QtGui.QDialog):
@@ -203,7 +199,7 @@ class Widget(Base):
         msgbox.show()
         
         # On OS X, `mplay` waits for you to close it.
-        if platform_system == 'Darwin':
+        if sys.platform.startswith('darwin'):
             self._player_waiting_thread = thread = QtCore.QThread()
             def run():
                 proc.wait()
