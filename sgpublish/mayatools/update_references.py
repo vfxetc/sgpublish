@@ -10,6 +10,7 @@ from maya import cmds
 from sgfs import SGFS
 import mayatools.shelf
 from mayatools.tickets import ticket_ui_context
+from mayatools.geocache import utils as geocache_utils
 
 from sgpublish import uiutils as ui_utils
 from sgpublish import check
@@ -17,66 +18,107 @@ from sgpublish.check import maya as maya_check
 from sgpublish.mayatools import create_reference
 
 
-class ReferenceItem(QtGui.QTreeWidgetItem):
+class VersionedItem(QtGui.QTreeWidgetItem):
+
+    default_type = '-'
 
     def __init__(self, sgfs, status):
 
         self.sgfs = sgfs
         self.status = status
 
-        fields = self._setup_data()
+        self._setupData()
 
-        super(ReferenceItem, self).__init__(fields)
+        fields = self._viewFields()
+        super(VersionedItem, self).__init__(fields)
 
-        self._setup_ui()
+        self._setupGui()
 
-    def _setup_data(self):
+    def _setupData(self):
 
         self.path = path = self.status.path
+        self.name = os.path.basename(self.path)
         self.publish = publish = self.status.used
 
         if publish:
-            task = publish.parent()
+            task = self.task = publish.parent()
         else:
             tasks = self.sgfs.entities_from_path(path, 'Task')
-            task = tasks[0] if tasks else None
+            task = self.task = tasks[0] if tasks else None
 
         if task:
             task.fetch(('step.Step.code', 'content'))
-            entity = task.parent()
+            self.entity = task.parent()
         else:
             entities = self.sgfs.entities_from_path(path, set(('Asset', 'Shot')))
-            entity = entities[0] if entities else None
+            self.entity = entities[0] if entities else None
 
-        self.namespace = cmds.file(path, q=True, namespace=True)
-        self.node = cmds.referenceQuery(path, referenceNode=True)
 
-        if publish:
+    def _viewFields(self):
+
+        if self.publish:
 
             return [
-                self.namespace,
-                entity['code'],
-                task['step.Step.code'],
-                task['content'],
-                publish['sg_type'],
-                publish['code'],
-                'COMBOBOX',
+                self.name,
+                self.entity['code'],
+                self.task['step.Step.code'],
+                self.task['content'],
+                self.publish['sg_type'],
+                self.publish['code'],
+                ('v%04d' % self.publish['sg_version']) if self.is_latest else
+                ('v%04d (of %d)' % (self.publish['sg_version'], self.status.latest['sg_version'])),
             ]
 
         else:
 
             return [
-                self.namespace,
-                entity['code'] if entity else '-',
-                task['step.Step.code'] if task else '-',
-                task['content'] if task else '-',
+                self.name,
+                self.entity['code'] if self.entity else '-',
+                self.task['step.Step.code'] if self.task else '-',
+                self.task['content'] if self.task else '-',
+                self.default_type,
                 '-',
                 '-',
-                'BUTTON',
             ]
 
-    def _setup_ui(self):
+    def _setupGui(self):
+        self._updateIcon()
+
+    @property
+    def is_latest(self):
+        return self.publish is self.status.latest
+
+    def _updateIcon(self):
+        if self.publish:
+            if self.is_latest:
+                self.setIcon(0, ui_utils.icon('silk/tick', size=12, as_icon=True))
+            else:
+                self.setIcon(0, ui_utils.icon('silk/cross', size=12, as_icon=True))
+        else:
+            self.setIcon(0, ui_utils.icon('silk/error', size=12, as_icon=True))
+
+    def attach_to_tree(self, tree=None):
+
+        if tree:
+            self.tree = tree
         
+
+
+
+
+class ReferenceItem(VersionedItem):
+
+    default_type = 'bare reference'
+
+    def _setupData(self):
+        super(ReferenceItem, self)._setupData()
+
+        self.name = self.namespace = cmds.file(self.path, q=True, namespace=True)
+        self.node = cmds.referenceQuery(self.path, referenceNode=True)
+
+    def _setupGui(self):
+        super(ReferenceItem, self)._setupGui()
+
         if self.publish:
 
             self.combo = combo = QtGui.QComboBox()
@@ -91,26 +133,8 @@ class ReferenceItem(QtGui.QTreeWidgetItem):
             self.button = button = QtGui.QPushButton("Pick a Publish")
             button.clicked.connect(self._pick_publish)
 
-        self._update_icon()
-
-    @property
-    def is_latest(self):
-        return self.publish is self.status.latest
-
-    def _update_icon(self):
-        if self.publish:
-            if self.is_latest:
-                self.setIcon(0, ui_utils.icon('silk/tick', size=12, as_icon=True))
-            else:
-                self.setIcon(0, ui_utils.icon('silk/cross', size=12, as_icon=True))
-        else:
-            self.setIcon(0, ui_utils.icon('silk/error', size=12, as_icon=True))
-
-    def attach_to_tree(self, tree=None):
-
-        if tree:
-            self.tree = tree
-        
+    def attach_to_tree(self, *args, **kwargs):
+        super(ReferenceItem, self).attach_to_tree(*args, **kwargs)
         if self.publish:
             self.tree.setItemWidget(self, 6, self.combo)
         else:
@@ -129,7 +153,7 @@ class ReferenceItem(QtGui.QTreeWidgetItem):
             )
             self.publish = new_publish
             self.path = new_path
-            self._update_icon()
+            self._updateIcon()
 
     def _pick_publish(self):
         self._picker = create_reference.Dialog(path=self.path, custom_namespace=False)
@@ -149,11 +173,21 @@ class ReferenceItem(QtGui.QTreeWidgetItem):
             self.status = check.check_paths([path])[0]
             # print self.status.used['sg_path']
             # print path
-            new_data = self._setup_data()
+            new_data = self._viewFields()
             for i, v in enumerate(new_data):
                 self.setData(i, Qt.DisplayRole, v)
-            self._setup_ui()
+            self._setupGui()
             self.attach_to_tree()
+
+
+class GeocacheItem(VersionedItem):
+
+    default_type = 'bare geocache'
+
+    def _setupData(self):
+        super(GeocacheItem, self)._setupData()
+
+        self.name = os.path.basename(os.path.dirname(self.path)) + '/' + os.path.splitext(os.path.basename(self.path))[0]
 
 
 
@@ -161,12 +195,12 @@ class Dialog(QtGui.QDialog):
     
     def __init__(self):
         super(Dialog, self).__init__()
-        self._setup_ui()
+        self._setupGui()
         self._populate_references()
         self._did_check = False
         self.setMinimumWidth(self._tree.viewport().width() + 120) # 120 for combos
     
-    def _setup_ui(self):
+    def _setupGui(self):
         
         self.setWindowTitle("Update References")
         self.setLayout(QtGui.QVBoxLayout())
@@ -174,7 +208,7 @@ class Dialog(QtGui.QDialog):
         self._tree = QtGui.QTreeWidget()
         self._tree.setIndentation(0)
         self._tree.setItemsExpandable(False)
-        self._tree.setHeaderLabels(["Namespace", "Entity", "Step", "Task", "Type", "Name", "Version"])
+        self._tree.setHeaderLabels(["Name", "Entity", "Step", "Task", "Type", "Publish Name", "Version"])
         self.layout().addWidget(self._tree)
         
         button_layout = QtGui.QHBoxLayout()
@@ -195,6 +229,14 @@ class Dialog(QtGui.QDialog):
         for reference in reference_statuses:
             
             item = ReferenceItem(sgfs, reference)
+            self._tree.addTopLevelItem(item)
+            item.attach_to_tree(self._tree)
+
+        geocaches = geocache_utils.get_existing_cache_mappings().keys()
+        geocache_statuses = check.check_paths(geocaches, only_published=True)
+        for geocache in geocache_statuses:
+
+            item = GeocacheItem(sgfs, geocache)
             self._tree.addTopLevelItem(item)
             item.attach_to_tree(self._tree)
 
