@@ -1,10 +1,17 @@
-from maya import cmds
-
 from common import *
 
-from uitools.trampoline import sleep
-from metatools.imports import autoreload
-from sgpublish.mayatools import publish_scene
+try:
+    from maya import cmds
+
+except ImportError:
+    pass
+
+else:
+
+    # Since none of these will be running, don't bother importing them.
+    from uitools.trampoline import sleep
+    from metatools.imports import autoreload
+    from sgpublish.mayatools import publish_scene
 
 
 class TestMayaScenePublish(TestCase):
