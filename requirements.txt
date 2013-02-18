@@ -5,6 +5,7 @@
 -e git://github.com/westernx/sgfs.git@master#egg=sgfs
 -e git://github.com/westernx/uifutures.git@master#egg=uifutures
 -e git://github.com/westernx/mayatools.git@master#egg=mayatools
+-e git://github.com/westernx/uitools.git@master#egg=uitools
 
 PyYaml
 futures
