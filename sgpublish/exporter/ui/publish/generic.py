@@ -370,7 +370,8 @@ class Widget(QtGui.QWidget):
                 "Name Collision",
                 "You cannot create a new stream with the same name as an"
                 " existing one. Please select the existing stream or enter a"
-                " unique name.",
+                " unique name.<br><br>(This publisher may close now;"
+                " <a href='https://keystone.shotgunstudio.com/detail/Ticket/217'>see ticket #217</a>.)",
             )
             # Fatal.
             return False
@@ -380,7 +381,8 @@ class Widget(QtGui.QWidget):
             QtGui.QMessageBox.critical(self,
                 "Review Version Without Movie",
                 "You cannot promote a publish for review without frames or a"
-                " movie.",
+                " movie.<br><br>(This publisher may close now;"
+                " <a href='https://keystone.shotgunstudio.com/detail/Ticket/217'>see ticket #217</a>.)",
             )
             # Fatal.
             return False
@@ -389,7 +391,9 @@ class Widget(QtGui.QWidget):
         if self._promote_checkbox.isChecked() and not self._timelog_spinbox.value():
             res = QtGui.QMessageBox.warning(self,
                 "Version without Time Log",
-                "Are you sure that this version did not take you any time?",
+                "Are you sure that this version did not take you any time?"
+                "<br><br>(This publisher may close if you press no;"
+                " <a href='https://keystone.shotgunstudio.com/detail/Ticket/217'>see ticket #217</a>.)",
                 QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
                 QtGui.QMessageBox.No,
             )
