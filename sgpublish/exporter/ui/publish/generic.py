@@ -68,8 +68,8 @@ class Widget(QtGui.QWidget):
         super(Widget, self).__init__()
         
         self._exporter = exporter
-        
-        self._existing_names = set()
+
+        self._existing_streams = set()
         
         basename = os.path.basename(exporter.filename_hint)
         basename = os.path.splitext(basename)[0]
@@ -205,7 +205,6 @@ class Widget(QtGui.QWidget):
         
         select = None
 
-        self._existing_names.update(p['code'] for p in publishes)
         publishes.sort(key=lambda p: p['sg_version'])
         
         for t_i, task in enumerate(tasks):
@@ -213,6 +212,9 @@ class Widget(QtGui.QWidget):
             for publish in publishes:
                 if publish['sg_link'] is not task:
                     continue
+
+                self._existing_streams.add((task['id'], publish['code']))
+
                 name = publish['code']
                 name_to_publish[name] = publish
                 
@@ -363,9 +365,13 @@ class Widget(QtGui.QWidget):
     
     def safety_check(self, **kwargs):
         
-        # Colliding names.
-        data = self._name_combo.currentData()
-        if 'name' not in data and str(self._name_field.text()) in self._existing_names:
+        # Check that the name is unique for publishes on this task.
+        task = self._task_combo.currentData().get('task')
+        existing_name = self._name_combo.currentData().get('name')
+        new_name = str(self._name_field.text())
+        if existing_name is None and (task['id'], new_name) in self._existing_streams:
+            print 'XXX', task['id'], repr(existing_name), repr(new_name)
+            print self._existing_streams
             QtGui.QMessageBox.critical(self,
                 "Name Collision",
                 "You cannot create a new stream with the same name as an"
