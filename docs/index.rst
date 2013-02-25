@@ -5,11 +5,8 @@ sgpublish
 
 .. todo:: Overview.
 
-
-
-
-API Reference
--------------
+Contents
+--------
 
 .. toctree::
     :maxdepth: 2

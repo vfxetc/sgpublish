@@ -15,23 +15,22 @@ from . import versions
 
 class Publisher(object):
     
-    """Object to assist in publishing to Shotgun.
+    """A publishing assistant.
     
     This object encapsulates the logic for the required two-stage creation cycle
     of a Shotgun ``PublishEvent``.
     
-    Publishes are grouped into logical streams, consisting of Shotgun
-    ``PublishEvent`` entities sharing the same ``link``, ``type``, and ``code``.
-    Their version numbers are automatically generated to be monotonically
-    increasing within that stream.
-    
-    This object is generally used as a context manager such that it will cleanup
+    This object is used as a context manager such that it will cleanup
     the first stage of the commit if there is an exception::
     
         >>> with sgpublish.Publisher(link=task, type="maya_scene", code=name,
         ...         ) as publisher:
         ...     publisher.add_file(scene_file)
-        
+    
+    The names of the parameters and attributes are largely the same as that of
+    the underlying ``PublishEvent`` itself, albeit with the ``"sg_"`` prefix
+    removed.
+    
     :param link: The Shotgun entity to attach to.
     :type link: :class:`python:dict` or :class:`~sgsession.entity.Entity`
     
