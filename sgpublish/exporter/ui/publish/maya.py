@@ -24,6 +24,8 @@ from sgpublish.exporter.ui.publish import Widget as Base
 from sgpublish import uiutils as ui_utils
 from sgpublish.exporter.maya import get_sound_for_frames, get_current_sound
 
+from .generic import PublishSafetyError
+
 
 class PlayblastPicker(QtGui.QDialog):
 
@@ -218,6 +220,6 @@ class Widget(Base):
             self._viewer_msgbox = None
 
     def export(self, **kwargs):
-        with ticket_ui_context():
+        with ticket_ui_context(pass_through=PublishSafetyError):
             return self._export(kwargs)
 

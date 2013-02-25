@@ -18,6 +18,10 @@ from sgactions.ticketui import ticket_ui_context
 from sgpublish.uiutils import ComboBox, hbox, vbox, icon
 
 
+class PublishSafetyError(RuntimeError):
+    pass
+
+
 class TimeSpinner(QtGui.QSpinBox):
     
     def __init__(self):
@@ -376,8 +380,7 @@ class Widget(QtGui.QWidget):
                 "Name Collision",
                 "You cannot create a new stream with the same name as an"
                 " existing one. Please select the existing stream or enter a"
-                " unique name.<br><br>(This publisher may close now;"
-                " <a href='https://keystone.shotgunstudio.com/detail/Ticket/217'>see ticket #217</a>.)",
+                " unique name.",
             )
             # Fatal.
             return False
@@ -387,8 +390,7 @@ class Widget(QtGui.QWidget):
             QtGui.QMessageBox.critical(self,
                 "Review Version Without Movie",
                 "You cannot promote a publish for review without frames or a"
-                " movie.<br><br>(This publisher may close now;"
-                " <a href='https://keystone.shotgunstudio.com/detail/Ticket/217'>see ticket #217</a>.)",
+                " movie.",
             )
             # Fatal.
             return False
@@ -397,9 +399,7 @@ class Widget(QtGui.QWidget):
         if self._promote_checkbox.isChecked() and not self._timelog_spinbox.value():
             res = QtGui.QMessageBox.warning(self,
                 "Version without Time Log",
-                "Are you sure that this version did not take you any time?"
-                "<br><br>(This publisher may close if you press no;"
-                " <a href='https://keystone.shotgunstudio.com/detail/Ticket/217'>see ticket #217</a>.)",
+                "Are you sure that this version did not take you any time?",
                 QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
                 QtGui.QMessageBox.No,
             )
@@ -409,13 +409,13 @@ class Widget(QtGui.QWidget):
         return True
         
     def export(self, **kwargs):
-        with ticket_ui_context():
+        with ticket_ui_context(pass_through=PublishSafetyError):
             return self._export(kwargs)
     
     def _export(self, kwargs):
     
         if not self.safety_check(**kwargs):
-            return
+            raise PublishSafetyError()
         
         task_data = self._task_combo.currentData()
         task = task_data.get('task')

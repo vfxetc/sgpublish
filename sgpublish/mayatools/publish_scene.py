@@ -26,6 +26,7 @@ from sgpublish import uiutils as ui_utils
 from sgpublish import utils
 from sgpublish.exporter import maya as io_maya
 from sgpublish.exporter.ui.publish import maya as ui_publish
+from sgpublish.exporter.ui.publish.generic import PublishSafetyError
 
 
 def basename(src_path=None):    
@@ -123,7 +124,12 @@ class Dialog(QtGui.QDialog):
         
         # DO IT.
         # This runs the safety check.
-        publisher = self._publish_widget.export()
+        try:
+            publisher = self._publish_widget.export()
+        except PublishSafetyError:
+            return
+
+        # It was an export, instead of a publish.
         if not publisher:
             return
         
