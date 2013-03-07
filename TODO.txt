@@ -1,4 +1,96 @@
 
+- Rename Publisher attributes to match PublishEntity names (without the prefix)
+  - frames_path -> path_to_frames
+  - movie_path -> path_to_movie
+  - movie_url -> qt
+
+- Refactor Publisher into Exporter and Publisher
+  - Exporter handles all the file manipulation stuff
+  - Publisher the two-stage entity creation
+
+
+- Compile complete list of exporters
+
+    mayatools.geocache.exporter
+    mayatools.camera.exporter
+    mayatools.refedit.exporter
+    mayatools.transform_anim_export
+    sgpublish.mayatools.scene_publisher
+    ks.maya.render_pass_tools.export_render_layers_gui
+
+
+- What are the various tasks that should be covered be exporters/publishers?
+    - Provide a UI for the user to pick tasks to attach to, names and
+      descriptions, new version number, timelog info, playblast, etc..
+    - Creating a folder using a SGFS template, and tagging it on a successful
+      publish. (It doesn't need to be successful.)
+    - Notify the user when a publish succeeded, and the new version number.
+    - Warn/stop the user when opening the dialog, before pressing the button
+      (by disabling it and putting warnings into the dialog), and after
+      validating the data in the dialog
+    - Abtracting most of the differences bettween exporting to a folder in the
+      work area vs publishing.
+
+
+- Could the export/publish differences be merged into a single stream by having
+  a general ExportRequest object that the user could set movie_frames (etc.) on
+  that won't actually end up doing anything, except going into `export.yml` or
+  something similar?
+
+
+- TEST THE SCENE PUBLISHER.
+    - could sgmock.unittest provide the basics for setting up a fake Shotgun
+      sandbox, SGFS, etc., so we can just move on with testing?
+        - Need to set a global SGFS_ROOT. Something like Flask's context stack
+          would not work since SGFS will be used from several threads.
+        - with sgfs.testing.context(root=self.sandbox): ???
+    - completely mock the Shotgun server and SGFS_ROOT, then create
+      the directories for a task from scratch
+    - set the workspace to something in the testing sandbox
+    - uitools.trampoline.wait_for_true(func, *args, **kwargs, timeout)
+    - uitools.trampoline.wait_for_signal(signal, timeout=None)
+    - rename attributes as I go using deprecate.renamed_attr('new') so the logs
+      will show what still needs to be fixed
+
+
+- publish safety checks still close the dialog, since there isn't a good way to
+  pass that information back to the dialog from the exporter
+    - raise an UnsafeExport exception?
+    - always return True or a Publisher
+    - have safety_check(**kwargs) to make sure it won't error
+    - have preflight(**kwargs) for interactions with the user, including
+      potentially dealing with and dismissing the warnings from the
+      safety check, including unsaved files, no timelog on versions, etc
+
+
+- replace Publisher with `create_publish_folder` and `create_publish`.
+  - don't really need this big context for creating the entity anymore since
+    we don't care about sequential version numbers all that much
+  - it could still be very handy to have a context for an export folder since
+    it could automatically make sure there are no naming collisions in either
+    the folder name or in the files that we copy into it, and it could rename
+    the folder to "*_failed" if it failed.
+
+      with sgfs.export_context(template_name, **kwargs) as export:
+
+        export.mkdir('blah')
+        export.open('name', 'wb') as fh
+        export.add_file(abspath, relpath)
+
+        export.create_entity('PublishEvent', {})
+
+      if not export.failed():
+        sgpublish.publish_export(export, ...)
+
+
+- document the purpose of sgpublish, and the sorts of things that are included
+  in the metadata
+
+- how to progressively replace safety_check
+  - rename it to something else, so that the new code can call the old and it
+    continue to work the same
+
+
 - refactor sgpublish.publisher.Publisher
     
     - There is too much attempted forsight in this class, doing lots of things
