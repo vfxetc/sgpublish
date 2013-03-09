@@ -2,6 +2,7 @@ import os
 import re
 import re
 import glob
+from shutil import copy
 
 
 def strip_version(name):
@@ -24,13 +25,17 @@ def get_next_revision_path(directory, basename, ext, version, revision=1):
     return os.path.join(directory, '%s_v%04d_r%04d%s' % (basename, version, revision, ext))
 
 
-def make_quicktime(movie_path, frames_path, audio_path=None):
+def make_quicktime(movie_paths, frames_path, audio_path=None):
     
     from uifutures.worker import set_progress, notify
 
     import ks.core.project
     import ks.core.quicktime.quicktime
     
+    if isinstance(movie_paths, basestring):
+        movie_paths = [movie_paths]
+    movie_path = movie_paths[0]
+
     # Get an actual file name out of a pattern.
     if '#' in frames_path:
         frames_path = re.sub('#+', '*', frames_path)
@@ -53,5 +58,9 @@ def make_quicktime(movie_path, frames_path, audio_path=None):
         set_progress(status="Adding %s" % os.path.basename(audio_path))
         qt.add_audio(movie_path, audio_path)
     
+    for extra_path in movie_paths[1:]:
+        set_progress(status="Copying to %s" % os.path.dirname(extra_path))
+        copy(movie_path, extra_path)
+
     notify('Your QuickTime is ready.')
 
