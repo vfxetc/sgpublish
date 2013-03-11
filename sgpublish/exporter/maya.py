@@ -121,6 +121,7 @@ class Exporter(base.Exporter):
                         path = '%s_%04d%s' % (base, copy_i, ext)
                         if not os.path.exists(path):
                             movie_paths[i] = path
+                            break
 
             
             sound_path = get_sound_for_frames(publisher.frames_path) or get_current_sound()
