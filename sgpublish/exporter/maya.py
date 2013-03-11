@@ -117,8 +117,8 @@ class Exporter(base.Exporter):
                 # Make the path unique.
                 if os.path.exists(path):
                     base, ext = os.path.splitext(path)
-                    for i in itertools.count(1):
-                        path = '%s_%04d%s' % (base, i, ext)
+                    for copy_i in itertools.count(1):
+                        path = '%s_%04d%s' % (base, copy_i, ext)
                         if not os.path.exists(path):
                             movie_paths[i] = path
 
