@@ -119,7 +119,7 @@ class Exporter(base.Exporter):
                     base, ext = os.path.splitext(path)
                     for i in itertools.count(1):
                         path = '%s_%04d%s' % (base, i, ext)
-                        if not os.path.exists(movie_path):
+                        if not os.path.exists(path):
                             movie_paths[i] = path
 
             
