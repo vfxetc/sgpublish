@@ -3,7 +3,13 @@
 sgpublish
 =========
 
-.. todo:: Overview.
+.. image:: https://secure.travis-ci.org/westernx/sgpublish.png
+    :alt: Test Status
+    :target: http://travis-ci.org/westernx/sgpublish
+
+
+.. todo:: Write an overview.
+
 
 Contents
 --------
