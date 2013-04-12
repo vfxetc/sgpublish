@@ -1,19 +1,6 @@
 Publishing via a Publisher
 ==========================
 
-Streams
--------
-
-Publishes are grouped into logical streams, consisting of Shotgun ``PublishEvent``
-entities sharing the same ``sg_link``, ``sg_type``, and ``code``. Any publish
-attached to the same link, of the same type, and with the same code should be
-considered incremental versions of the same thing.
-
-While publishes have version numbers, and these version numbers can be
-automatically generated to be monotonically increasing, there is no meaning
-behind the version numbers except what the users/artists put upon them.
-
-
 Creating a Publish
 ------------------
 
