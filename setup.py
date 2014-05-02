@@ -1,4 +1,5 @@
-from distutils.core import setup
+import os
+from setuptools import setup, find_packages
 
 setup(
     name='sgpublish',
@@ -6,8 +7,8 @@ setup(
     description='Shotgun publishes.',
     url='http://github.com/westernx/sgpublish',
     
-    packages=['sgpublish'],
-    
+    packages=find_packages(exclude=['build*', 'tests*']),
+
     author='Mike Boers',
     author_email='sgpublish@mikeboers.com',
     license='BSD-3',
