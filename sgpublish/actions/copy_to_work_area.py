@@ -12,7 +12,7 @@ import sgfs.ui.picker.presets as picker_presets
 import sgfs.ui.picker.utils as picker_utils
 
 from sgpublish import utils
-from sgbpuslih import uiutils as ui_utils
+from sgpublish import uiutils as ui_utils
 
 
 class Dialog(QtGui.QDialog):
