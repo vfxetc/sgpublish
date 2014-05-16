@@ -62,6 +62,7 @@ class Dialog(QtGui.QDialog):
         exit()
     
     def _on_node_changed(self, node):
+        
         self._node = node
         self._enable = 'Task' in node.state
         
