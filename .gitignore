@@ -8,3 +8,5 @@
 /bin
 /docs/_build
 /sandbox
+/build
+*.egg-info
