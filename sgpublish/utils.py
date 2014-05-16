@@ -11,7 +11,7 @@ def strip_version(name):
 
 def get_next_revision(directory, basename, ext, version, revision=1):
     basename = strip_version(basename)
-    pattern = re.compile(r'%s_v%04d_r(\d+)' % (re.escape(basename), version))
+    pattern = re.compile(r'%s_v%04d_r(\d+)%s' % (re.escape(basename), version, re.escape(ext)))
     for name in os.listdir(directory):
         m = pattern.match(name)
         if m:
