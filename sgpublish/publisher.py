@@ -244,6 +244,11 @@ class Publisher(object):
         return self._review_version_entity
 
     @property
+    def review_version_fields(self):
+        """The stub of the review fields, or None."""
+        return self._review_version_fields
+
+    @property
     def directory(self):
         """The path into which all files must be placed."""
         return self._directory

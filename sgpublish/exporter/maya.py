@@ -89,31 +89,26 @@ class Exporter(base.Exporter):
             
             movie_paths = []
 
-            # TODO: Do these with SGFS templates.
-
-            review_version = publisher.review_version_entity
-            if review_version:
-                version_prefix = '%d_' % review_version['id']
-            else:
-                version_prefix = 'wip_'
-
             # <task>/dailies/<date>/<name>_v<version>.mov
             movie_paths.append(os.path.join(
                 publisher.sgfs.path_for_entity(publisher.link),
                 'dailies',
                 datetime.datetime.now().strftime('%y-%m-%d'), # 2-digit year
-                '%s%s_v%04d.mov' % (version_prefix, publisher.name, publisher.version),
+                '%s_v%04d.mov' % (publisher.name, publisher.version),
             ))
 
-            # <project>/VFX_Dailies/<date>/<step>/<name>_v<version>.mov
-            movie_paths.append(os.path.join(
-                publisher.sgfs.path_for_entity(publisher.link.project()),
-                'VFX_Dailies',
-                datetime.datetime.now().strftime('%Y-%m-%d'),
-                publisher.link.fetch('step.Step.code') or 'Unknown',
-                '%s%s_v%04d.mov' % (version_prefix, publisher.name, publisher.version),
-            ))
-
+            # <project>/VFX_Dailies/<date>/<step>/<Version.id>_<name>_v<version>.mov
+            review_version = publisher.review_version_entity
+            if review_version:
+                review_qt_path = os.path.join(
+                    publisher.sgfs.path_for_entity(publisher.link.project()),
+                    'VFX_Dailies',
+                    datetime.datetime.now().strftime('%Y-%m-%d'),
+                    publisher.link.fetch('step.Step.code') or 'Unknown',
+                    '%d_%s_v%04d.mov' % (review_version['id'], publisher.name, publisher.version),
+                )
+                movie_paths.append(review_qt_path)
+            
             for i, path in enumerate(movie_paths):
 
                 dir_ = os.path.dirname(path)
