@@ -79,7 +79,7 @@ class Exporter(object):
     def before_export_publish(self, publisher, **kwargs):
         pass
     
-    def fields_for_review_version(self, publisher, **kwargs):
+    def fields_for_review_version(self, **kwargs):
         return {}
     
     def export_publish(self, publisher, **kwargs):

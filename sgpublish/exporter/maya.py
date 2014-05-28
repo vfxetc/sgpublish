@@ -91,12 +91,18 @@ class Exporter(base.Exporter):
 
             # TODO: Do these with SGFS templates.
 
+            review_version = publisher.review_version_entity
+            if review_version:
+                version_prefix = '%d_' % review_version['id']
+            else:
+                version_prefix = 'wip_'
+
             # <task>/dailies/<date>/<name>_v<version>.mov
             movie_paths.append(os.path.join(
                 publisher.sgfs.path_for_entity(publisher.link),
                 'dailies',
                 datetime.datetime.now().strftime('%y-%m-%d'), # 2-digit year
-                publisher.name + '_v%04d.mov' % publisher.version,
+                '%s%s_v%04d.mov' % (version_prefix, publisher.name, publisher.version),
             ))
 
             # <project>/VFX_Dailies/<date>/<step>/<name>_v<version>.mov
@@ -105,7 +111,7 @@ class Exporter(base.Exporter):
                 'VFX_Dailies',
                 datetime.datetime.now().strftime('%Y-%m-%d'),
                 publisher.link.fetch('step.Step.code') or 'Unknown',
-                publisher.name + '_v%04d.mov' % publisher.version,
+                '%s%s_v%04d.mov' % (version_prefix, publisher.name, publisher.version),
             ))
 
             for i, path in enumerate(movie_paths):
@@ -147,7 +153,7 @@ class Exporter(base.Exporter):
             }
             publisher.frames_path = None
     
-    def fields_for_review_version(self, publisher, **kwargs):
+    def fields_for_review_version(self, **kwargs):
         min_time = cmds.playbackOptions(query=True, minTime=True)
         max_time = cmds.playbackOptions(query=True, maxTime=True)
         return {

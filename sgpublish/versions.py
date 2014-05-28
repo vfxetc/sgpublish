@@ -20,7 +20,6 @@ def promote_publish(publish, **kwargs):
     
     fields = {
         'code': '%s_v%04d' % (publish['code'], publish['sg_version']),
-        'created_by': publish['created_by'],
         'description': publish['description'],
         'entity': publish['sg_link']['entity'],
         'project': publish['project'],
@@ -50,11 +49,17 @@ def promote_publish(publish, **kwargs):
             'frame_count': int(max_time - min_time + 1),
         })
     
+    
+    # Create/update the version.
+    version = kwargs.pop('version_entity', None)
     fields.update(kwargs)
+    if version is not None:
+        sgfs.session.update('Version', version['id'], fields)
+    else:
+        fields['created_by'] = publish['created_by']
+        version = sgfs.session.create('Version', fields)
     
-    # Create the new version.
-    version = sgfs.session.create('Version', fields)
-    
+
     with ThreadPoolExecutor(4) as executor:
         
         # Share thumbnails.

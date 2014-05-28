@@ -430,6 +430,12 @@ class Widget(QtGui.QWidget):
         stream_data = self._name_combo.currentData()
         parent = stream_data.get('publish')
         
+        # Do the promotion.
+        if self._promote_checkbox.isChecked():
+            review_version_fields = self._exporter.fields_for_review_version(**kwargs)
+        else:
+            review_version_fields = None
+
         publisher = self._exporter.publish(task,
             name=self.name(),
             description=self.description(),
@@ -438,19 +444,13 @@ class Widget(QtGui.QWidget):
             thumbnail_path=self.thumbnail_path(),
             frames_path=self.frames_path(),
             movie_path=self.movie_path(),
+            review_version_fields=review_version_fields,
             export_kwargs=kwargs,
         )
-    
-        if self._promote_checkbox.isChecked():
-            # progress.setLabelText('Creating Version for Review...')
-            promotion_fields = self._exporter.fields_for_review_version(publisher, **kwargs)
-            print "PROMOTE", promotion_fields
-            publisher.promote_for_review(**promotion_fields)
         
         # Create the timelog.
         minutes = self._timelog_spinbox.value()
         if minutes:
-            # progress.setLabelText('Logging time...')
             publisher.sgfs.session.create('TimeLog', {
                 'project': publisher.entity.project(),
                 'entity': publisher.link,
@@ -459,8 +459,6 @@ class Widget(QtGui.QWidget):
                 'description': '%s_v%04d' % (publisher.name, publisher.version),
                 'date': datetime.datetime.utcnow().date(),
             })
-        
-        # progress.hide()
         
         return publisher
 

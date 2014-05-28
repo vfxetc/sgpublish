@@ -65,7 +65,11 @@ class Publisher(object):
         self._link = self.sgfs.session.merge(link)
         self._name = str(name)
         self._parent = parent
-        
+
+        # Get information about the promotion for review.
+        self._review_version_entity = None
+        self._review_version_fields = kwargs.pop('review_version_fields', None)
+
         # To only allow us to commit once.
         self._committed = False
         
@@ -93,18 +97,19 @@ class Publisher(object):
         # Get everything into the right type before sending it to Shotgun.
         self._normalize_attributes()
         
-        # Start fetching existing publishes while we create this one.
+        # Prep for async processes.
+        executor = concurrent.futures.ThreadPoolExecutor(3)
+        futures = []
+
+        # Figure out the version number (async).
         if version is None:
-            existing_future = concurrent.futures.ThreadPoolExecutor(1).submit(
-                self.sgfs.session.find,
-                'PublishEvent',
-                [
-                    ('sg_link', 'is', self.link),
-                    ('sg_type', 'is', self.type),
-                    ('code', 'is', self.name),
-                ],
-                ['sg_version', 'created_at'],
-            )
+            futures.append(executor.submit(self._set_automatic_version))
+        else:
+            self._version = int(version)
+
+        # Create the review version stub (async).
+        if self._review_version_fields is not None:
+            futures.append(executor.submit(self._get_review_version))
 
         # First stage of the publish: create an "empty" PublishEvent.
         try:
@@ -126,24 +131,10 @@ class Publisher(object):
             else:
                 raise
         
-        # Manually forced version number.
-        if version is not None:
-            self._version = int(version)
-        
-        # Determine the version number by looking at the existing publishes.
-        else:
-            self._version = 1
-            for existing in existing_future.result():
-            
-                # Skip over ones that are later than we just created.
-                if existing['id'] >= self.entity['id']:
-                    continue
-            
-                # Only increment for non-failed commits.
-                if existing['sg_version']:
-                    self._version = existing['sg_version'] + 1
-                    self._parent = existing
-        
+        # Lets have our async processes catch up.
+        for future in futures:
+            future.result()
+
         # Manually forced directory.
         if directory is not None:
             self._directory_supplied = True
@@ -182,7 +173,31 @@ class Publisher(object):
         tags = self.sgfs.get_directory_entity_tags(self._directory)
         if any(tag['entity'].exists() for tag in tags):
             raise ValueError('directory is already tagged: %r' % self._directory)
-    
+
+    def _set_automatic_version(self):
+
+        existing_entities = self.sgfs.session.find(
+            'PublishEvent',
+            [
+                ('sg_link', 'is', self.link),
+                ('sg_type', 'is', self.type),
+                ('code', 'is', self.name),
+            ],
+            ['sg_version', 'created_at'],
+        )
+
+        self._version = 1
+        for e in existing_entities:
+        
+            # Skip over ones that are later than we just created.
+            if e['id'] >= self.entity['id']:
+                continue
+        
+            # Only increment for non-failed commits.
+            if e['sg_version']:
+                self._version = e['sg_version'] + 1
+                self._parent = e
+
     def _normalize_url(self, url):
         if url is None:
             return
@@ -224,14 +239,18 @@ class Publisher(object):
         return self._version
     
     @property
+    def review_version_entity(self):
+        """The stub of the review Version, or None."""
+        return self._review_version_entity
+
+    @property
     def directory(self):
         """The path into which all files must be placed."""
         return self._directory
-    
+
     def isabs(self, dst_name):
         """Is the given path absolute and within the publish directory?"""
         return dst_name.startswith(self._directory)
-    
         
     def abspath(self, dst_name):
         """Get the abspath of the given name within the publish directory.
@@ -305,26 +324,28 @@ class Publisher(object):
             }
             
             # Force the updated into the entity for the tag, since the Shotgun
-            # update may not complete by the time that we tag the directory.
+            # update may not complete by the time that we tag the directory
+            # or promote for review.
             self.entity.update(updates)
             
             executor = concurrent.futures.ThreadPoolExecutor(4)
-            
+            futures = []
+
             # Start the second stage of the publish.
-            update_future = executor.submit(self.sgfs.session.update,
+            futures.append(executor.submit(self.sgfs.session.update,
                 'PublishEvent',
                 self.entity['id'],
                 updates,
-            )
+            ))
                 
             if self.thumbnail_path:
                 
                 # Start the thumbnail upload in the background.
-                thumbnail_future = executor.submit(self.sgfs.session.upload_thumbnail,
+                futures.append(executor.submit(self.sgfs.session.upload_thumbnail,
                     self.entity['type'],
                     self.entity['id'],
                     self.thumbnail_path,
-                )
+                ))
                 
                 # Schedule it for copy.
                 thumbnail_name = 'thumbnail' + os.path.splitext(self.thumbnail_path)[1]
@@ -333,9 +354,6 @@ class Publisher(object):
                     thumbnail_name,
                     make_unique=True
                 )
-            
-            else:
-                thumbnail_future = None
             
             # Copy in the scheduled files.
             for src_path, dst_path in self._files:
@@ -350,9 +368,8 @@ class Publisher(object):
             check_call(['chmod', 'a+t,u+w', self._directory])
             
             # Wait for the Shotgun updates.
-            update_future.result()
-            if thumbnail_future:
-                thumbnail_future.result()
+            for future in futures:
+                future.result()
                 
             # Tag the directory. Ideally we would like to do this before the
             # futures are waited for, but we only want to tag the directory
@@ -365,15 +382,21 @@ class Publisher(object):
             full_metadata = dict(self.metadata)
             full_metadata['sgpublish'] = our_metadata
             self.sgfs.tag_directory_with_entity(self._directory, self.entity, full_metadata)
+
+            # Again, we would like to do with with the futures, but the current
+            # version of this depends on the directory being tagged.
+            if self._review_version_fields is not None:
+                self._promote_for_review()
+
         
         except:
-            self._failed()
+            self.rollback()
             raise
         
     def __enter__(self):
         return self
     
-    def _failed(self):
+    def rollback(self):
         
         # Remove the entity's ID.
         id_ = self.entity.pop('id', None) or 0
@@ -390,10 +413,30 @@ class Publisher(object):
     
     def __exit__(self, *exc_info):
         if exc_info and exc_info[0] is not None:
-            self._failed()
+            self.rollback()
             return
         self.commit()
     
-    def promote_for_review(self, **kwargs):
+    def _get_review_version(self):
+        """Get a Version entity which will reference the PublishEvent once done.
+
+        MUST call :meth:`promote_for_review` to finalize this entity.
+
+        """
+
+        if self._review_version_entity is None:
+            self._review_version_entity = self.sgfs.session.create('Version', {
+                'code': 'stub for publishing',
+                'created_by': self.created_by,
+                'project': self.link.project(),
+            })
+        return self._review_version_entity
+
+    def _promote_for_review(self):
+        if not self._committed:
+            raise RuntimeError('can only promote AFTER publishing commits')
+        kwargs = dict(self._review_version_fields or {})
+        if self._review_version_entity:
+            kwargs.setdefault('version_entity', self._review_version_entity)
         return versions.promote_publish(self.entity, **kwargs)
 
