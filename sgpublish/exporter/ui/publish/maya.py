@@ -178,11 +178,11 @@ class Widget(Base):
         # Open a viewer, and wait for it to close.
         sound_path = get_sound_for_frames(path) or get_current_sound()
         frame_rate = cmds.playbackOptions(q=True, framesPerSecond=True)
-        houdini_style_path = re.sub(r'(#+)', lambda m: '$F%d' % len(m.group(1)), path)
-        cmd = ['mplay', '-C', '-T', '-R', '-r', str(int(frame_rate))]
+        rv_style_path = re.sub(r'(#+)', lambda m: '%0' + '%d' % len(m.group(1)) + 'd', path)
+        cmd = ['rv', '[', rv_style_path, '-fps', str(frame_rate), ']']
         if sound_path:
-            cmd.extend(('-a', sound_path))
-        cmd.append(houdini_style_path)
+            cmd.extend(['-over', '[', sound_path, ']'])
+        print subprocess.list2cmdline(cmd)
         proc = subprocess.Popen(cmd)
 
         # Inform the user that we want them to close the viewer before
