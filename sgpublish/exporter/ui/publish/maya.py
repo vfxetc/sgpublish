@@ -182,8 +182,15 @@ class Widget(Base):
         cmd = ['rv', '[', rv_style_path, '-fps', str(frame_rate), ']']
         if sound_path:
             cmd.extend(['-over', '[', sound_path, ']'])
+
+        # fix for launching rv from maya on mac
+        # http://www.tweaksoftware.com/static/documentation/rv/current/html/maya_tools_help.html#_osx_maya_2014
+        env = dict(os.environ)
+        if 'QT_MAC_NO_NATIVE_MENUBAR' in env:
+            del env['QT_MAC_NO_NATIVE_MENUBAR']
+
         print subprocess.list2cmdline(cmd)
-        proc = subprocess.Popen(cmd)
+        proc = subprocess.Popen(cmd, env = env)
 
         # Inform the user that we want them to close the viewer before
         # publishing. This is really just to force them to look at it one last
