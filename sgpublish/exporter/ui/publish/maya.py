@@ -38,7 +38,7 @@ class PlayblastPicker(QtGui.QDialog):
         self.setWindowModality(Qt.WindowModal)
         self.setLayout(QtGui.QVBoxLayout())
         
-        self.layout().addWidget(QtGui.QLabel("Pick an existing playblast:"))
+        self.layout().addWidget(QtGui.QLabel("Choose an existing playblast:"))
         
         self._picker = mayatools.playblast.picker.Picker()
         self._picker.autoSetMinimumWidth()
@@ -62,12 +62,13 @@ class PlayblastPicker(QtGui.QDialog):
         buttons.addWidget(self._cancel_button)
         self._cancel_button.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         
-        self._select_button = QtGui.QPushButton("Open")
+        self._select_button = QtGui.QPushButton("Choose")
         self._select_button.setEnabled(False)
         self._select_button.clicked.connect(self._on_select)
         buttons.addWidget(self._select_button)
         self._select_button.setSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
-        
+        self.setWindowTitle("Choose a Playblast")
+
     def _selection_changed(self, path):
         self._select_button.setEnabled(path is not None)
     
