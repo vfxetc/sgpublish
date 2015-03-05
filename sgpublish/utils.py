@@ -25,7 +25,7 @@ def get_next_revision_path(directory, basename, ext, version, revision=1):
     return os.path.join(directory, '%s_v%04d_r%04d%s' % (basename, version, revision, ext))
 
 
-def make_quicktime(movie_paths, frames_path, audio_path = None):
+def make_quicktime(movie_paths, frames_path, audio_path = None, extended_data = None):
     
     from uifutures.worker import set_progress, notify
 
@@ -38,11 +38,14 @@ def make_quicktime(movie_paths, frames_path, audio_path = None):
     movie_path = movie_paths[0]
 
     frame_sequence = daily_utils.parse_source_path(frames_path)
-    
+
     qt = dailymaker.DailyMaker()
     qt.image_sequence = frame_sequence
+    qt.source = frames_path
     qt.dest = movie_path
     qt.render_preview = False
+    qt.extended_data = extended_data
+
     qt.set_preset(presets.find_preset(presets.get_default_preset()))
 
     # Setup signal to the user.

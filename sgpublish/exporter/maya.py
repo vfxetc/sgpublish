@@ -136,7 +136,9 @@ class Exporter(base.Exporter):
                 
                 executor.submit_ext(
                     func=utils.make_quicktime,
-                    args=(movie_paths, publisher.frames_path, sound_path),
+                    args = (movie_paths, publisher.frames_path, sound_path, {'maya_workspace':self.workspace,
+                                                                             'min_time': cmds.playbackOptions(query = True, minTime = True),
+                                                                             'max_time': cmds.playbackOptions(query = True, maxTime = True), }),
                     name="QuickTime \"%s_v%04d\"" % (publisher.name, publisher.version),
                 )
             
