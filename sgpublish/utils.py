@@ -25,38 +25,34 @@ def get_next_revision_path(directory, basename, ext, version, revision=1):
     return os.path.join(directory, '%s_v%04d_r%04d%s' % (basename, version, revision, ext))
 
 
-def make_quicktime(movie_paths, frames_path, audio_path=None):
+def make_quicktime(movie_paths, frames_path, audio_path = None):
     
     from uifutures.worker import set_progress, notify
 
-    import ks.core.project
-    import ks.core.quicktime.quicktime
-    
+    from dailymaker import dailymaker
+    from dailymaker import utils as daily_utils
+    from dailymaker import presets
+
     if isinstance(movie_paths, basestring):
         movie_paths = [movie_paths]
     movie_path = movie_paths[0]
 
-    # Get an actual file name out of a pattern.
-    if '#' in frames_path:
-        frames_path = re.sub('#+', '*', frames_path)
-    if '*' in frames_path:
-        frames_path = sorted(glob.glob(frames_path))[0]
+    frame_sequence = daily_utils.parse_source_path(frames_path)
     
-    # Read in the sequence.
-    # TODO: Rebuild this functionality.
-    frame_sequence = ks.core.project.get_sequence(frames_path)
-    
-    qt = ks.core.quicktime.quicktime.quicktime()
-    
+    qt = dailymaker.DailyMaker()
+    qt.image_sequence = frame_sequence
+    qt.dest = movie_path
+    qt.render_preview = False
+    qt.set_preset(presets.find_preset(presets.get_default_preset()))
+
     # Setup signal to the user.
-    qt.progress = lambda value, maximum: set_progress(value, maximum, status="Encoding %s" % os.path.basename(frame_sequence[value]))
-    
-    # Process it.
-    qt.make_quicktime(frame_sequence, movie_path)
-    
+    qt._progress_callback = lambda value, maximum, image: set_progress(value, maximum, status = "Encoding %s" % os.path.basename(frame_sequence[value]))
+
     if audio_path:
-        set_progress(status="Adding %s" % os.path.basename(audio_path))
-        qt.add_audio(movie_path, audio_path)
+        qt.audio = audio
+
+    # Process it.
+    qt.start()
     
     for extra_path in movie_paths[1:]:
         set_progress(status="Copying to %s" % os.path.dirname(extra_path))
