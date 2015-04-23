@@ -52,7 +52,7 @@ def make_quicktime(movie_paths, frames_path, audio_path = None, extended_data = 
     qt._progress_callback = lambda value, maximum, image: set_progress(value, maximum, status = "Encoding %s" % os.path.basename(frame_sequence[value]))
 
     if audio_path:
-        qt.audio = audio
+        qt.audio = audio_path
 
     # Process it.
     qt.start()
