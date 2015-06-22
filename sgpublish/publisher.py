@@ -187,12 +187,7 @@ class Publisher(object):
         )
 
         self._version = 1
-        for e in existing_entities:
-        
-            # Skip over ones that are later than we just created.
-            if e['id'] >= self.entity['id']:
-                continue
-        
+        for e in existing_entities:        
             # Only increment for non-failed commits.
             if e['sg_version']:
                 self._version = e['sg_version'] + 1
