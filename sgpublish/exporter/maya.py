@@ -12,7 +12,8 @@ from . import base
 from sgpublish import utils
 
 
-maya_version = int(mel.eval('about -version').split()[0])
+def maya_version():
+    return int(mel.eval('about -version').split()[0])
 
 
 def get_sound_for_frames(frames):
@@ -77,7 +78,7 @@ class Exporter(base.Exporter):
 
         # Add a bunch of metadata.
         publisher.metadata['maya'] = {
-            'version': maya_version,
+            'version': maya_version(),
             'references': [str(x) for x in cmds.file(query=True, reference=True) or []],
             'sound_path': get_current_sound(),
             'min_time': cmds.playbackOptions(query=True, minTime=True),
