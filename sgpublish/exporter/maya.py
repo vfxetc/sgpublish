@@ -39,7 +39,10 @@ def get_sound_for_frames(frames):
 
 def get_current_sound():
     
-    playback_slider = mel.eval('$tmpVar = $gPlayBackSlider')
+    try:
+        playback_slider = mel.eval('$tmpVar = $gPlayBackSlider')
+    except RuntimeError:
+        playback_slider = None
     if not playback_slider:
         print '# Could not get gPlayBackSlider'
         return
