@@ -2,6 +2,7 @@
 -
     entrypoint: sgpublish.actions.copy_to_work_area:run
     title: "Publish: Copy to Work Area..."
+    list_order: 31
     rich:
         heading: Publish
         title: Copy to Work Area
@@ -12,6 +13,7 @@
 -
     entrypoint: sgpublish.actions.promote_to_version:run
     title: "Publish: Promote to Version"
+    list_order: 32
     rich:
         heading: Publish
         title: Promote to Version
