@@ -14,6 +14,12 @@ setup(
     author_email='sgpublish@mikeboers.com',
     license='BSD-3',
     
+    entry_points={
+        'console_scripts': '''
+            publish_to_shotgun = sgpublish.commands.publish:main
+        ''',
+    },
+    
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
