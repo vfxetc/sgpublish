@@ -205,11 +205,15 @@ class Publisher(object):
     def _normalize_attributes(self):
         self.created_by = self.created_by or self.sgfs.session.guess_user()
         self.description = str(self.description or '') or None
-        self.frames_path = str(self.frames_path or '') or None
-        self.movie_path = str(self.movie_path or '') or None
         self.movie_url = self._normalize_url(self.movie_url) or None
-        self.path = str(self.path or '') or None
+
+        # This is uploaded, so not relative.
         self.thumbnail_path = str(self.thumbnail_path or '') or None
+
+        # Descriptive paths are relative to the directory.
+        self.frames_path = os.path.join(self.directory, self.frames_path) if self.frames_path else None
+        self.movie_path = os.path.join(self.directory, self.movie_path) if self.movie_path else None
+        self.path = os.path.join(self.directory, self.path) if self.path else None
 
     @property
     def type(self):
@@ -311,7 +315,7 @@ class Publisher(object):
         
         # Cleanup all user-settable attributes that are sent to Shotgun.
         self._normalize_attributes()
-        
+
         try:
             
             updates = {
