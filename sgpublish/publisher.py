@@ -94,6 +94,9 @@ class Publisher(object):
         if kwargs:
             raise TypeError('too many kwargs: %r' % sorted(kwargs))
         
+        # Required for normalizing.
+        self._directory = None
+
         # Get everything into the right type before sending it to Shotgun.
         self._normalize_attributes()
         
@@ -211,9 +214,10 @@ class Publisher(object):
         self.thumbnail_path = str(self.thumbnail_path or '') or None
 
         # Descriptive paths are relative to the directory.
-        self.frames_path = os.path.join(self.directory, self.frames_path) if self.frames_path else None
-        self.movie_path = os.path.join(self.directory, self.movie_path) if self.movie_path else None
-        self.path = os.path.join(self.directory, self.path) if self.path else None
+        if self._directory is not None:
+            self.frames_path = os.path.join(self._directory, self.frames_path) if self.frames_path else None
+            self.movie_path = os.path.join(self._directory, self.movie_path) if self.movie_path else None
+            self.path = os.path.join(self._directory, self.path) if self.path else None
 
     @property
     def type(self):
