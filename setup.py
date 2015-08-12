@@ -16,7 +16,7 @@ setup(
     
     entry_points={
         'console_scripts': '''
-            publish_to_shotgun = sgpublish.commands.publish:main
+            sgpublish-create = sgpublish.commands.create:main
         ''',
     },
     

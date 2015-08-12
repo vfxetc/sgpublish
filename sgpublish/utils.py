@@ -25,6 +25,21 @@ def get_next_revision_path(directory, basename, ext, version, revision=1):
     return os.path.join(directory, '%s_v%04d_r%04d%s' % (basename, version, revision, ext))
 
 
+_pardir_pattern = r'^((%s|%s)%s)+' % (re.escape(os.pardir), re.escape(os.curdir), re.escape(os.sep))
+
+def has_pardir(path):
+    return re.match(_pardir_pattern, path) is not None
+
+def strip_pardir(path):
+    """Remove parent/current directory markers from a path.
+
+    >>> strip_pardir('.././a')
+    'a'
+
+    """
+    return re.sub(_pardir_pattern, '', path)
+
+
 def make_quicktime(movie_paths, frames_path, audio_path = None, extended_data = None):
     
     from uifutures.worker import set_progress, notify
