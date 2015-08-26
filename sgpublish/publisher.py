@@ -130,7 +130,7 @@ class Publisher(object):
             })
         except ShotgunFault:
             if not self.link.exists():
-                raise RuntimeError('%s %d ("%s") has been retired' % (link['type'], link['id']))
+                raise RuntimeError('%s %d (%r) has been retired' % (link['type'], link['id'], link.get('name')))
             else:
                 raise
         
