@@ -77,9 +77,9 @@ class Publisher(object):
     ):
         
         if not sgfs:
-            if template:
+            if isinstance(template, Entity):
                 sgfs = SGFS(session=template.session)
-            elif link:
+            elif isinstance(link, Entity):
                 sgfs = SGFS(session=link.session)
             else:
                 sgfs = SGFS()
