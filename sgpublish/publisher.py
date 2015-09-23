@@ -87,6 +87,7 @@ class Publisher(object):
 
         if template:
 
+            template = sgfs.session.merge(template)
             to_fetch = ['sg_link', 'sg_type', 'code']
             to_fetch.extend(_kwarg_to_field.itervalues())
             template.fetch(to_fetch)

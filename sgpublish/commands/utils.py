@@ -82,12 +82,16 @@ def add_publisher_arguments(parser, short_flags=True, prefix=None):
 
 def extract_publisher_kwargs(args, sgfs=None):
 
-    kwargs = {key[10:]: value for key, value in args.__dict__.iteritems() if key.startswith('publisher_')}
+    kwargs = {
+        key[10:]: value
+        for key, value in args.__dict__.iteritems()
+        if key.startswith('publisher_') and value is not None
+    }
 
     sgfs = sgfs or SGFS()
-    if kwargs['link']:
+    if 'link' in kwargs:
         kwargs['link'] = parse_spec(sgfs, kwargs['link'])
-    if kwargs['template']:
+    if 'template' in kwargs:
         kwargs['template'] = parse_spec(sgfs, kwargs['template'], entity_types=['PublishEvent'])
 
     return kwargs

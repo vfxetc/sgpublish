@@ -24,7 +24,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     kwargs = extract_publisher_kwargs(args)
 
-    if not kwargs['name']:
+    if 'name' not in kwargs:
         kwargs['name'] = basename(args.files[0])
 
     with Publisher(**kwargs) as publisher:
