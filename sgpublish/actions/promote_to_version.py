@@ -31,7 +31,3 @@ def run(entity_type, selected_ids, **kwargs):
         
         versions.promote_publish(entity)
         notify('Promoted to version "%s_v%04d"' % (entity['code'], entity['sg_version']))    
-
-if __name__ == '__main__':
-    run('PublishEvent', [64])
-

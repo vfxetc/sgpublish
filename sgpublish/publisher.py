@@ -87,7 +87,9 @@ class Publisher(object):
             'movie_path',
             'movie_url',
             'path',
+            'source_publishes',
             'thumbnail_path',
+            'trigger_event',
         ):
             setattr(self, name, kwargs.pop(name, None))
         
@@ -125,6 +127,8 @@ class Publisher(object):
                 'sg_path_to_frames': self.frames_path,
                 'sg_path_to_movie': self.movie_path,
                 'sg_qt': self.movie_url,
+                'sg_source_publishes': self.source_publishes or [],
+                'sg_trigger_event_id': self.trigger_event['id'] if self.trigger_event else None,
                 'sg_type': self.type,
                 'sg_version': 0, # Signifies that this is "empty".
             })
@@ -206,9 +210,12 @@ class Publisher(object):
         return {'url': str(url)}
     
     def _normalize_attributes(self):
+
         self.created_by = self.created_by or self.sgfs.session.guess_user()
         self.description = str(self.description or '') or None
         self.movie_url = self._normalize_url(self.movie_url) or None
+        self.source_publishes = self.source_publishes if self.source_publishes is not None else []
+        self.trigger_event = self.trigger_event or None
 
         # This is uploaded, so not relative.
         self.thumbnail_path = str(self.thumbnail_path or '') or None
@@ -328,6 +335,8 @@ class Publisher(object):
                 'sg_path_to_frames': self.frames_path,
                 'sg_path_to_movie': self.movie_path,
                 'sg_qt': self.movie_url,
+                'sg_source_publishes': self.source_publishes or [],
+                'sg_trigger_event_id': self.trigger_event['id'] if self.trigger_event else None,
                 'sg_version': self._version,
             }
             

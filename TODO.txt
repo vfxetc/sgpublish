@@ -1,3 +1,7 @@
+
+- "template" argument to Publisher that it copies as much as it can from,
+  and sets source_publishes to that template.
+
 - How are we going to transition to using the new PublishedFile and PublishType
   entities in Shotgun 5.0?
 
