@@ -49,7 +49,7 @@ class Exporter(object):
         """
         pass
     
-    def publish(self, link, name, export_kwargs=None, **publisher_kwargs):
+    def publish(self, link=None, name=None, export_kwargs=None, **publisher_kwargs):
         """Trigger a publish.
         
         This method only deals with setting up the publisher, and uses
@@ -59,11 +59,13 @@ class Exporter(object):
         :returns: The publisher used.
         
         """
-        publish_type = self.publish_type
-        if not publish_type:
+
+        type_ = self.publish_type
+        if not type_:
             raise ValueError('cannot publish without type')
-        
-        with Publisher(link, publish_type, name, **publisher_kwargs) as publisher:
+
+        publisher_kwargs.pop('type', None)
+        with Publisher(link=link, type=type_, name=name, **publisher_kwargs) as publisher:
             
             # Record the ID before the export so that it is included.
             self.record_publish_id(publisher.id)
