@@ -1,9 +1,7 @@
 
-- "template" argument to Publisher that it copies as much as it can from,
-  and sets source_publishes to that template.
+- argparser for getting kwargs for Publisher
+  takes a "prefix" so that it is easily stuffed into other tools
 
-- How are we going to transition to using the new PublishedFile and PublishType
-  entities in Shotgun 5.0?
 
 
 - Various importers should highlight tasks which have publishes that the

@@ -1,16 +1,20 @@
-import os
 from subprocess import check_call
 import datetime
 import itertools
+import logging
+import os
 
 import concurrent.futures
 
-from shotgun_api3.shotgun import Fault as ShotgunFault
 from sgfs import SGFS
 from sgsession import Session, Entity
+from shotgun_api3.shotgun import Fault as ShotgunFault
 
 from . import utils
 from . import versions
+
+
+log = logging.getLogger(__name__)
 
 
 _kwarg_to_field = {
@@ -22,6 +26,7 @@ _kwarg_to_field = {
     'source_publishes': 'sg_source_publishes',
     'trigger_event': 'sg_trigger_event_id',
 }
+
 
 class Publisher(object):
     
@@ -66,8 +71,10 @@ class Publisher(object):
     :type sgfs: :class:`~sgfs.sgfs.SGFS` or None
     
     """
-    
-    def __init__(self, link=None, type=None, name=None, version=None, parent=None, directory=None, sgfs=None, template=None, **kwargs):
+
+    def __init__(self, link=None, type=None, name=None, version=None, parent=None,
+        directory=None, sgfs=None, template=None, **kwargs
+    ):
         
         if template:
 
@@ -330,6 +337,26 @@ class Publisher(object):
         dst_path = self.abspath(dst_name)
         self._files.append((src_path, dst_path))
         return dst_path
+
+    def add_files(self, files, relative_to=None, make_unique=False):
+
+        for i, path in enumerate(files):
+
+            if relative_to:
+                # The publish will be structured relative to the given root.
+                rel_path = os.path.relpath(path, relative_to)
+                if utils.has_pardir(rel_path):
+                    log.warning('%s is not within %s' % (path, relative_to))
+                    rel_path = utils.strip_pardir(path)
+
+                dst_path = self.add_file(path, rel_path, make_unique=make_unique)
+            else:
+                dst_path = self.add_file(path, make_unique=make_unique)
+
+            # Set the publish's "path" to that of the first file.
+            if not i and self.path is None:
+                self.path = dst_path
+
     
     def file_exists(self, dst_name):
         """If added via :meth:`.add_file`, would it clash with an existing file?"""

@@ -8,6 +8,11 @@ from shutil import copy
 def strip_version(name):
     return re.sub(r'_v\d+(_r\d+)', '', name)
 
+def basename(src_path):    
+    basename = os.path.basename(src_path)
+    basename = os.path.splitext(basename)[0]
+    basename = re.sub(r'_*[rv]\d+', '', basename)
+    return basename
 
 def get_next_revision(directory, basename, ext, version, revision=1):
     basename = strip_version(basename)
