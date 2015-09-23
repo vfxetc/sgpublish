@@ -68,6 +68,27 @@ class TestBasicPublisher(TestCase):
         self.assertEqual(republish.fetch('sg_trigger_event_id'), 1234)
 
     def test_publish_template(self):
-        pass
-        
+
+        data_file = os.path.join(self.sandbox, 'data_file.txt')
+        open(data_file, 'w').write('this is a dummy file')
+
+        with Publisher(name='test_publish_template', description='THINGS!', type='generic', link=self.task, sgfs=self.sgfs) as publisher:
+            published_file = publisher.add_file(data_file)
+
+        self.assertTrue(os.path.basename(published_file), 'data_file.txt')
+        template = publisher.entity
+
+        # Now some event happens.
+
+        with Publisher(type='republish', sgfs=self.sgfs, template=template) as publisher:
+            republished_file = publisher.add_file(published_file)
+
+        self.assertTrue(os.path.basename(republished_file), 'data_file.txt')
+        republish = publisher.entity
+
+        self.assertEqual(republish.fetch('code'), 'test_publish_template')
+        self.assertEqual(republish.fetch('sg_type'), 'republish')
+        self.assertEqual(republish.fetch('description'), 'THINGS!')
+        self.assertEqual(republish.fetch('sg_source_publishes'), [template])
+
 

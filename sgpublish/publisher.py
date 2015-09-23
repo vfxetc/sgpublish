@@ -13,6 +13,16 @@ from . import utils
 from . import versions
 
 
+_kwarg_to_field = {
+    'created_by': 'created_by',
+    'description': 'description',
+    'frames_path': 'sg_path_to_frames',
+    'movie_path': 'sg_path_to_movie',
+    'movie_url': 'sg_qt',
+    'source_publishes': 'sg_source_publishes',
+    'trigger_event': 'sg_trigger_event_id',
+}
+
 class Publisher(object):
     
     """A publishing assistant.
@@ -57,8 +67,26 @@ class Publisher(object):
     
     """
     
-    def __init__(self, link, type, name, version=None, parent=None, directory=None, sgfs=None, **kwargs):
+    def __init__(self, link=None, type=None, name=None, version=None, parent=None, directory=None, sgfs=None, template=None, **kwargs):
         
+        if template:
+
+            to_fetch = ['sg_link', 'sg_type', 'code']
+            to_fetch.extend(_kwarg_to_field.itervalues())
+            template.fetch(to_fetch)
+
+            tpl_link, tpl_type, tpl_name = template.get(('sg_link', 'sg_type', 'code'))
+            link = link or tpl_link
+            type = type or tpl_type
+            name = name or tpl_name
+
+            kwargs.setdefault('source_publishes', [template])
+            for key, field in _kwarg_to_field.iteritems():
+                kwargs.setdefault(key, template.get(field))
+
+        if not (link and type and name):
+            raise ValueError('requires link, type, and name')
+
         self.sgfs = sgfs or (SGFS(session=link.session) if isinstance(link, Entity) else SGFS())
 
         self._type = str(type)
@@ -215,7 +243,11 @@ class Publisher(object):
         self.description = str(self.description or '') or None
         self.movie_url = self._normalize_url(self.movie_url) or None
         self.source_publishes = self.source_publishes if self.source_publishes is not None else []
-        self.trigger_event = self.trigger_event or None
+
+        if isinstance(self.trigger_event, int):
+            self.trigger_event = {'type': 'EventLogEntry', 'id': self.trigger_event}
+        else:
+            self.trigger_event = self.trigger_event or None
 
         # This is uploaded, so not relative.
         self.thumbnail_path = str(self.thumbnail_path or '') or None
