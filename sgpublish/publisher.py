@@ -76,6 +76,15 @@ class Publisher(object):
         directory=None, sgfs=None, template=None, **kwargs
     ):
         
+        if not sgfs:
+            if template:
+                sgfs = SGFS(session=template.session)
+            elif link:
+                sgfs = SGFS(session=link.session)
+            else:
+                sgfs = SGFS()
+        self.sgfs = sgfs
+
         if template:
 
             to_fetch = ['sg_link', 'sg_type', 'code']
@@ -91,10 +100,21 @@ class Publisher(object):
             for key, field in _kwarg_to_field.iteritems():
                 kwargs.setdefault(key, template.get(field))
 
+            if not kwargs.get('thumbnail_path'):
+                # We certainly jump through a lot of hoops to do this...
+                # Perhaps this should be sgfs.get_entity_tags(entity)
+                publish_path = sgfs.path_for_entity(template)
+                if publish_path:
+                    tags = sgfs.get_directory_entity_tags(publish_path)
+                    tags = [tag for tag in tags if tag['entity'] == template]
+                    if tags:
+                        meta = tags[0].get('sgpublish', {})
+                        thumbnail = meta.get('thumbnail')
+                        if thumbnail:
+                            kwargs['thumbnail_path'] = thumbnail
+
         if not (link and type and name):
             raise ValueError('requires link, type, and name')
-
-        self.sgfs = sgfs or (SGFS(session=link.session) if isinstance(link, Entity) else SGFS())
 
         self._type = str(type)
         self._link = self.sgfs.session.merge(link)
