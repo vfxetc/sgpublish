@@ -4,7 +4,7 @@ from sgfs.commands.utils import parse_spec
 from sgfs import SGFS
 
 
-def add_publisher_arguments(parser, short_flags=True, prefix=None):
+def add_publisher_arguments(parser, short_flags=True, prefix=None, skip=frozenset()):
 
     if prefix and not isinstance(prefix, basestring):
         prefix = 'publish'
@@ -20,6 +20,9 @@ def add_publisher_arguments(parser, short_flags=True, prefix=None):
             is_flag = flag.startswith('-')
             is_long = flag.startswith('--')
             has_flag = has_flag or is_flag
+
+            if flag.strip('-') in skip:
+                return
 
             # We use the first long flag for dest and metavar.
             if is_long or not is_flag:
@@ -67,26 +70,30 @@ def add_publisher_arguments(parser, short_flags=True, prefix=None):
         dest='publisher_thumbnail_path',
         help='existing thumbnail to upload')
 
-    path_group = group.add_argument_group('publish relative paths', '''
-        Paths that describe how to interpret different contents of the publish.
-        If relative, they are relative to the final publish directory (and so
-        should be relative to the current working directory or the path passed
-        to `-C`). Absolute paths are used as is, but discouraged as they will
-        be outside of the publish.
-    ''')
-    add_argument(path_group, '-p', '--path', help='primary "path" of the publish')
-    add_argument(path_group, '--frames-path', metavar='PATH')
-    add_argument(path_group, '--movie-path', metavar='PATH')
-    add_argument(path_group, '--movie-url', metavar='PATH', help='URL to view a contained movie')
+    if 'paths' not in skip:
+        path_group = group.add_argument_group('publish relative paths', '''
+            Paths that describe how to interpret different contents of the publish.
+            If relative, they are relative to the final publish directory (and so
+            should be relative to the current working directory or the path passed
+            to `-C`). Absolute paths are used as is, but discouraged as they will
+            be outside of the publish.
+        ''')
+        add_argument(path_group, '-p', '--path', help='primary "path" of the publish')
+        add_argument(path_group, '--frames-path', metavar='PATH')
+        add_argument(path_group, '--movie-path', metavar='PATH')
+        add_argument(path_group, '--movie-url', metavar='PATH', help='URL to view a contained movie')
 
 
-def extract_publisher_kwargs(args, sgfs=None):
+def extract_publisher_kwargs(args, sgfs=None, delete=True):
 
-    kwargs = {
-        key[10:]: value
-        for key, value in args.__dict__.iteritems()
-        if key.startswith('publisher_') and value is not None
-    }
+    kwargs = {}
+
+    for key, value in args.__dict__.items():
+        if key.startswith('publisher_'):
+            if value is not None:
+                kwargs[key[10:]] = value
+            if delete:
+                delattr(args, key)
 
     sgfs = sgfs or SGFS()
     if 'link' in kwargs:

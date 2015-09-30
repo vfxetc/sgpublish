@@ -1,8 +1,17 @@
+import errno
 import os
 import re
 import re
 import glob
 from shutil import copy
+
+
+def makedirs(path):
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
 
 
 def strip_version(name):

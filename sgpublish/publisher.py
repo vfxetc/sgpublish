@@ -1,8 +1,10 @@
 from subprocess import check_call
 import datetime
 import itertools
+import json
 import logging
 import os
+import shutil
 
 import concurrent.futures
 
@@ -146,6 +148,7 @@ class Publisher(object):
             'source_publishes',
             'thumbnail_path',
             'trigger_event',
+            'extra_fields',
         ):
             setattr(self, name, kwargs.pop(name, None))
         
@@ -173,21 +176,23 @@ class Publisher(object):
             futures.append(executor.submit(self._get_review_version))
 
         # First stage of the publish: create an "empty" PublishEvent.
+        initial_data = {
+            'code': self.name,
+            'created_by': self.created_by,
+            'description': self.description,
+            'project': self.link.project(),
+            'sg_link': self.link,
+            'sg_path_to_frames': self.frames_path,
+            'sg_path_to_movie': self.movie_path,
+            'sg_qt': self.movie_url,
+            'sg_source_publishes': self.source_publishes or [],
+            'sg_trigger_event_id': self.trigger_event['id'] if self.trigger_event else None,
+            'sg_type': self.type,
+            'sg_version': 0, # Signifies that this is "empty".
+        }
+        initial_data.update(self.extra_fields)
         try:
-            self.entity = self.sgfs.session.create('PublishEvent', {
-                'code': self.name,
-                'created_by': self.created_by,
-                'description': self.description,
-                'project': self.link.project(),
-                'sg_link': self.link,
-                'sg_path_to_frames': self.frames_path,
-                'sg_path_to_movie': self.movie_path,
-                'sg_qt': self.movie_url,
-                'sg_source_publishes': self.source_publishes or [],
-                'sg_trigger_event_id': self.trigger_event['id'] if self.trigger_event else None,
-                'sg_type': self.type,
-                'sg_version': 0, # Signifies that this is "empty".
-            })
+            self.entity = self.sgfs.session.create('PublishEvent', initial_data)
         except ShotgunFault:
             if not self.link.exists():
                 raise RuntimeError('%s %d (%r) has been retired' % (link['type'], link['id'], link.get('name')))
@@ -204,11 +209,6 @@ class Publisher(object):
             
             # Make it if it doesn't already exist, but don't care if it does.
             self._directory = os.path.abspath(directory)
-            try:
-                os.makedirs(self._directory)
-            except OSError as e:
-                if e.errno != 17: # File exists.
-                    raise
         
         else:
             self._directory_supplied = False
@@ -231,6 +231,10 @@ class Publisher(object):
                     self._directory = path
                     break
         
+        # Make the directory so that tools which want to manually copy files
+        # don't have to.
+        utils.makedirs(self._directory)
+
         # If the directory is tagged with existing entities, then we cannot
         # proceed. This allows one to retire a publish and then overwrite it.
         tags = self.sgfs.get_directory_entity_tags(self._directory)
@@ -276,6 +280,8 @@ class Publisher(object):
             self.trigger_event = {'type': 'EventLogEntry', 'id': self.trigger_event}
         else:
             self.trigger_event = self.trigger_event or None
+
+        self.extra_fields = {} if self.extra_fields is None else self.extra_fields
 
         # This is uploaded, so not relative.
         self.thumbnail_path = str(self.thumbnail_path or '') or None
@@ -338,7 +344,7 @@ class Publisher(object):
         else:
             return os.path.join(self._directory, dst_name.lstrip('/'))
     
-    def add_file(self, src_path, dst_name=None, make_unique=False):
+    def add_file(self, src_path, dst_name=None, make_unique=False, method='copy', immediate=False):
         """Queue a file (or folder) to be copied into the publish.
         
         :param str src_path: The path to copy into the publish.
@@ -356,10 +362,31 @@ class Publisher(object):
         elif self.file_exists(dst_name):
             raise ValueError('the file already exists in the publish')
         dst_path = self.abspath(dst_name)
-        self._files.append((src_path, dst_path))
+
+        if method not in ('copy', 'move'):
+            raise ValueError('bad add_file method %r' % method)
+
+        if immediate:
+            self._add_file(src_path, dst_path, method)
+        else:
+            self._files.append((src_path, dst_path, method))
+
         return dst_path
 
-    def add_files(self, files, relative_to=None, make_unique=False):
+    def _add_file(self, src_path, dst_path, method):
+        
+        dst_dir = os.path.dirname(dst_path)
+        if not os.path.exists(dst_dir):
+            os.makedirs(dst_dir)
+
+        if method == 'copy':
+            shutil.copy(src_path, dst_path)
+        elif method == 'move':
+            shutil.move(src_path, dst_path)
+        else:
+            raise RuntimeError('bad add_file method %r' % method)
+
+    def add_files(self, files, relative_to=None, **kwargs):
 
         for i, path in enumerate(files):
 
@@ -370,9 +397,9 @@ class Publisher(object):
                     log.warning('%s is not within %s' % (path, relative_to))
                     rel_path = utils.strip_pardir(path)
 
-                dst_path = self.add_file(path, rel_path, make_unique=make_unique)
+                dst_path = self.add_file(path, rel_path, **kwargs)
             else:
-                dst_path = self.add_file(path, make_unique=make_unique)
+                dst_path = self.add_file(path, **kwargs)
 
             # Set the publish's "path" to that of the first file.
             if not i and self.path is None:
@@ -418,7 +445,9 @@ class Publisher(object):
                 'sg_source_publishes': self.source_publishes or [],
                 'sg_trigger_event_id': self.trigger_event['id'] if self.trigger_event else None,
                 'sg_version': self._version,
+                'sg_metadata': json.dumps(self.metadata),
             }
+            updates.update(self.extra_fields)
             
             # Force the updated into the entity for the tag, since the Shotgun
             # update may not complete by the time that we tag the directory
@@ -445,19 +474,18 @@ class Publisher(object):
                 ))
                 
                 # Schedule it for copy.
-                thumbnail_name = 'thumbnail' + os.path.splitext(self.thumbnail_path)[1]
-                thumbnail_name = self.add_file(
-                    self.thumbnail_path,
-                    thumbnail_name,
-                    make_unique=True
-                )
+                thumbnail_name = os.path.relpath(self.thumbnail_path, self.directory)
+                if thumbnail_name.startswith('.'):
+                    thumbnail_name = 'thumbnail' + os.path.splitext(self.thumbnail_path)[1]
+                    thumbnail_name = self.add_file(
+                        self.thumbnail_path,
+                        thumbnail_name,
+                        make_unique=True
+                    )
             
             # Copy in the scheduled files.
-            for src_path, dst_path in self._files:
-                dst_dir = os.path.dirname(dst_path)
-                if not os.path.exists(dst_dir):
-                    os.makedirs(dst_dir)
-                check_call(['cp', '-rp', src_path, dst_path])
+            for file_args in self._files:
+                self._add_file(*file_args)
             
             # Set permissions. I would like to own it by root, but we need root
             # to do that. We also leave the directory writable, but sticky.
