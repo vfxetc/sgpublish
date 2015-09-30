@@ -22,7 +22,7 @@ _kwarg_to_field = {
     'description': 'description',
     'frames_path': 'sg_path_to_frames',
     'movie_path': 'sg_path_to_movie',
-    'movie_url': 'sg_qt',
+    # 'movie_url': 'sg_qt', # leaving this one out until we figure out URLs better.
     'source_publishes': 'sg_source_publishes',
     'trigger_event': 'sg_trigger_event_id',
 }
