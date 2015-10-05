@@ -1,5 +1,15 @@
 
 -
+    entrypoint: sgpublish.actions.rv:run_play
+    title: "Play in RV"
+    rich:
+        heading: "RV"
+        title: "Play in RV"
+        icon: control-play-blue
+    entity_types: [PublishEvent]
+    selection_required: true
+
+-
     entrypoint: sgpublish.actions.copy_to_work_area:run
     title: "Publish: Copy to Work Area..."
     list_order: 31
