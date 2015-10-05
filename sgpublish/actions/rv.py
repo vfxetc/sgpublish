@@ -19,27 +19,38 @@ def run_play(entity_type, selected_ids, **kwargs):
     entities = sgfs.session.merge([{'type': entity_type, 'id': id_} for id_ in selected_ids])
 
     if entity_type == 'PublishEvent':
-        sgfs.session.fetch(entities, ('sg_type', 'qt', 'path_to_frames', 'path_to_movie', 'path'))
+        sgfs.session.fetch(entities, ('code', 'sg_type', 'qt', 'path_to_frames', 'path_to_movie', 'path'))
 
         for entity in entities:
 
-            path = (
-                (entity['path_to_frames'] or '').strip() or
-                (entity['path_to_movie'] or '').strip() or
-                (entity['path'] or '').strip()
-            )
-            if not path:
-                alert("PublishEvent %d has nothing to play." % entity['id'])
-                return
+            skipped_exts = []
 
-            ext = os.path.splitext(path)[1]
-            if ext in ('.dpx', '.mov', '.jpg'):
-                notify('Playing %s in RV...' % path)
-                rvlink(['-l', '-play', path])
+            for path_key in ('path_to_frames', 'path_to_movie', 'path'):
+
+                path = (entity[path_key] or '').strip()
+                if not path:
+                    continue
+
+                ext = os.path.splitext(path)[1]
+                if ext in ('.dpx', '.mov', '.jpg'):
+                    notify('Playing %s in RV...' % path)
+                    rvlink(['-l', '-play', path])
+                    break
+
+                else:
+                    skipped_exts.append(ext)
 
             else:
-                alert("We don't know how to play \"%s\" %s publishes." % (ext, entity['sg_type']))
+                if skipped_exts:
+                    alert("""We don't know how to play %s publishes with %s extensions.""" % (
+                        entity['sg_type'], '/'.join(sorted(skipped_exts))
+                    ))
+                else:
+                    alert("""%s publish %d ("%s") has nothing to play.""" % (
+                        entity['sg_type'].title(), entity['id'], entity['code']
+                    ))
                 return
+
 
 
     else:
