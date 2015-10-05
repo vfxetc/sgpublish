@@ -6,6 +6,7 @@ import urllib
 from sgactions.utils import notify, alert
 from sgfs import SGFS
 
+
 def rvlink(cmd):
     url = 'rvlink://%s' % urllib.quote(' '.join("'%s'" % x for x in cmd))
     if sys.platform == 'darwin':
@@ -13,13 +14,14 @@ def rvlink(cmd):
     else:
         sunprocess.check_call(['xdg-open', url])
 
+
 def run_play(entity_type, selected_ids, **kwargs):
 
     sgfs = SGFS()
-    entities = sgfs.session.merge([{'type': entity_type, 'id': id_} for id_ in selected_ids])
+    entities = sgfs.session.get(entity_type, selected_ids)
 
     if entity_type == 'PublishEvent':
-        sgfs.session.fetch(entities, ('code', 'sg_type', 'qt', 'path_to_frames', 'path_to_movie', 'path'))
+        sgfs.session.fetch(entities, ('code', 'sg_type', 'path_to_frames', 'path_to_movie', 'path'))
 
         for entity in entities:
 
