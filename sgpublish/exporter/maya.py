@@ -80,12 +80,15 @@ class Exporter(base.Exporter):
     def before_export_publish(self, publisher, **kwargs):
 
         # Add a bunch of metadata.
+        file_info = [x.encode('utf8') for x in cmds.fileInfo(q=True)]
+        file_info = dict(zip(file_info[0::2], file_info[1::2]))
         publisher.metadata['maya'] = {
-            'version': maya_version(),
+            'file_info': file_info,
+            'max_time': cmds.playbackOptions(query=True, maxTime=True),
+            'min_time': cmds.playbackOptions(query=True, minTime=True),
             'references': [str(x) for x in cmds.file(query=True, reference=True) or []],
             'sound_path': get_current_sound(),
-            'min_time': cmds.playbackOptions(query=True, minTime=True),
-            'max_time': cmds.playbackOptions(query=True, maxTime=True),
+            'version': maya_version(), # Redundant with file_info, but used historically.
         }
 
         # Playblasts should be converted into frames.
