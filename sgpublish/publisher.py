@@ -90,15 +90,16 @@ class Publisher(object):
         if template:
 
             template = sgfs.session.merge(template)
-            to_fetch = ['sg_link', 'sg_type', 'code']
+            to_fetch = ['sg_link', 'sg_type', 'code', 'sg_version']
             to_fetch.extend(_kwarg_to_field.itervalues())
             template.fetch(to_fetch)
 
-            tpl_link, tpl_type, tpl_name = template.get(('sg_link', 'sg_type', 'code'))
+            tpl_link, tpl_type, tpl_name, tpl_version = template.get(('sg_link', 'sg_type', 'code', 'sg_version'))
             link = link or tpl_link
             type = type or tpl_type
             name = name or tpl_name
-
+            version = version or tpl_version
+            
             kwargs.setdefault('source_publishes', [template])
             for key, field in _kwarg_to_field.iteritems():
                 kwargs.setdefault(key, template.get(field))
