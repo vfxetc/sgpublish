@@ -115,7 +115,7 @@ class Publisher(object):
                         meta = tags[0].get('sgpublish', {})
                         thumbnail = meta.get('thumbnail')
                         if thumbnail:
-                            kwargs['thumbnail_path'] = thumbnail
+                            kwargs['thumbnail_path'] = os.path.join(publish_path, thumbnail)
 
         if not (link and type and name):
             raise ValueError('requires link, type, and name')
