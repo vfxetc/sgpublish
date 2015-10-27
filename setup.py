@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='sgpublish',
-    version='0.1.0b',
+    version='0.1.0',
     description='Shotgun publishes.',
     url='http://github.com/westernx/sgpublish',
     
