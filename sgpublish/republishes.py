@@ -87,7 +87,7 @@ class RepublishEventPlugin(object):
 
         src_types = _split_to_set(src_types)
         dst_types = _split_to_set(dst_types)
-        src_steps = _split_to_set(src_steps)
+        src_steps = set(x.title() for x in _split_to_set(src_steps))
         
         if not dst_types:
             raise ValueError('must provide destination types for idempodence checks')
@@ -123,12 +123,14 @@ class RepublishEventPlugin(object):
             self.log.warning('Publish appears to have been deleted; skipping')
             return
             
-        _, login, step_code, publish_type = publish.fetch((
+        _, login, step_code, step_name, publish_type = publish.fetch((
             'code',
             'created_by.HumanUser.login',
+            'sg_link.Task.step.Step.code',
             'sg_link.Task.step.Step.short_name',
             'sg_type',
         ))
+        steps = set((step_code.title(), step_name.title()))
 
         related = None
 
@@ -140,9 +142,10 @@ class RepublishEventPlugin(object):
                 continue
 
             # Make sure it is from the correct step.
-            # Steps names could use some love...
-            if src_steps and step_code not in src_steps:
-                self.log.debug('sg_link.step.short_code %s is not %s; skipping' % (step_code, '/'.join(sorted(src_steps))))
+            # We've title-cased all step names at this point, and are comparing
+            # against both the step code and name, so this should be forgiving.
+            if src_steps and not src_steps.intersection(steps):
+                self.log.debug('step %s is not %s; skipping' % ('/'.join(sorted(steps)), '/'.join(sorted(src_steps))))
                 continue
 
             # Make sure we haven't already derived it, or are in progress of
