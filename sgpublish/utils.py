@@ -54,7 +54,7 @@ def strip_pardir(path):
     return re.sub(_pardir_pattern, '', path)
 
 
-def make_quicktime(movie_paths, frames_path, audio_path = None, extended_data = None):
+def make_quicktime(movie_paths, frames_path, audio_path=None, extended_data=None, progress_callback=None):
     
     from uifutures.worker import set_progress, notify
 
@@ -78,7 +78,12 @@ def make_quicktime(movie_paths, frames_path, audio_path = None, extended_data = 
     qt.set_preset(presets.find_preset(presets.get_default_preset()))
 
     # Setup signal to the user.
-    qt._progress_callback = lambda value, maximum, image: set_progress(value, maximum, status = "Encoding %s" % os.path.basename(frame_sequence[value]))
+    if progress_callback is not None:
+        qt._progress_callback = progress_callback
+    else:
+        qt._progress_callback = lambda value, maximum, image: set_progress(
+            value, maximum, status = "Encoding %s" % os.path.basename(frame_sequence[value])
+        )
 
     if audio_path:
         qt.audio = audio_path
