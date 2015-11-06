@@ -48,7 +48,7 @@ def add_publisher_arguments(parser, short_flags=True, prefix=None, skip=frozense
 
         x.add_argument(*args, **kwargs)
 
-    group = parser.add_argument_group('publisher', '''
+    group = parser.add_argument_group('Publishing', '''
         For the creation of publishes.
     ''')
 

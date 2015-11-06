@@ -1,9 +1,4 @@
 
-- argparser for getting kwargs for Publisher
-  takes a "prefix" so that it is easily stuffed into other tools
-
-
-
 - Various importers should highlight tasks which have publishes that the
   importer would pull in.
 
@@ -13,54 +8,21 @@
     - Perhaps give them another button which open it?
     - Perhaps give them a "secret" keyboard modifier?
 
-
-- It has been suggested that we merge all of the exporters into one large blob
-  which either handles everything at the same time, or allows the artsts to
-  pick a selection of what they want.
-
-  This is motivated by the lighters not getting geocaches even though the
-  animators are publishing scenes.
-
-  Instead, since it is the people down the pipe who know what they want,
-  reverse the control. There is only one main publisher, and a series of
-  importers which are able to transform the data in a manner before it is
-  imported.
-
-  E.g. The main scene is published to `<pub>/scene.mb`. The geocacher can
-  geocache the tagged geo (like it already does) into `<pub>/geocache/whatever`.
-
-
-- If not above, create a unified publish import mechanism.
-
-
-- should publish windows load tasks sync to severaly simplify the testing
+- should publish windows load tasks sync to severely simplify the testing
   process, and to make it more obvious when it fails?
-
 
 - get sgpublish.io.base.Exporter.before_export_publish into export_publish
     Or fully document the reason for it is that we want to override have access
     to the publisher from within the `export` method.
-
-
-- function for really quickly publishing a scene for the rig builder
-    quick_publish(type='maya_scene', name=None)
-        - uses the workspace to detect the task
-        - uses the filename (minus version/revision) if name isn't provided
-
 
 - Rename Publisher attributes to match PublishEntity names (without the prefix)
   - frames_path -> path_to_frames
   - movie_path -> path_to_movie
   - movie_url -> qt
 
-
 - Refactor Publisher into Exporter and Publisher
   - Exporter handles all the file manipulation stuff
   - Publisher the two-stage entity creation
-
-
-- Make sure the metadata tracks the parent publish if it can.
-
 
 - "Version Scene to Match Publish" button in the confirmation dialog
   - easiest way is to add (allow_version_up=True) kwarg which is checked
