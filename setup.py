@@ -15,9 +15,10 @@ setup(
     license='BSD-3',
     
     entry_points={
-        'console_scripts': '''
-            sgpublish-create = sgpublish.commands.create:main
-        ''',
+        'console_scripts': [
+            'sgpublish-create = sgpublish.commands.create:main', # Deprecated.
+            'publish_generic = sgpublish.commands.create:main',
+        ],
     },
     
     classifiers=[
