@@ -64,6 +64,8 @@ def add_publisher_arguments(parser, short_flags=True, prefix=None, skip=frozense
         help='the type of publish; must exist in SGFS schema')
     add_argument(meta_group, '-n', '--name', '--code',
         help='the name of the publish')
+    add_argument(meta_group, '-V', '--version', type=int,
+        help='the version of the publish')
     add_argument(meta_group, '-d', '--description', metavar='DESC',
         help='a description of the publish')
     add_argument(meta_group, '-T', '--thumbnail', metavar='PATH',
