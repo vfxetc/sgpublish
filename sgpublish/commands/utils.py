@@ -4,6 +4,74 @@ from sgfs.commands.utils import parse_spec
 from sgfs import SGFS
 
 
+def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, fields=()):
+    """Given input from a user, find a publish.
+
+    When searching, we simply return the latest publish found."""
+
+    if isinstance(input_, basestring):
+        input_ = parse_spec(sgfs, input_)
+
+    if publish_types and isinstance(publish_types, basestring):
+        publish_types = [publish_types]
+    
+    if input_['type'] == 'PublishEvent':
+        publish = input_
+        if publish_types and publish.fetch('sg_type') not in publish_types:
+            raise ValueError('PublishEvent is %s, should be in %r' % (publish['sg_type'], tuple(sorted(publish_types))))
+        return publish
+
+    if not search_for_publish:
+        raise ValueError('no publish from input')
+
+    base_filters = []
+    base_fields = list(fields or ()) + ['created_at']
+    if publish_types:
+        base_filters.append(('sg_type', 'in', tuple(publish_types)))
+
+    if input_['type'] == 'Task':
+        publishes = sgfs.session.find('PublishEvent', base_filters + [
+            ('sg_link', 'is', input_),
+        ], base_fields)
+    elif input_['type'] in ('Shot', 'Asset'):
+        publishes = sgfs.session.find('PublishEvent', base_filters + [
+            ('sg_link.Task.entity', 'is', input_),
+        ], base_fields)
+    else:
+        raise ValueError('cannot find publishes from %s' % input_['type'])
+
+    if not publishes:
+        raise ValueError('no publishes on {type} {id}'.format(**input_))
+
+    publishes.sort(key=lambda p: p['created_at'])
+    return publishes[-1]
+
+
+def parse_as_path_or_publish(sgfs, input_, file_exts=None, fields=(), **kwargs):
+
+    if isinstance(file_exts, basestring):
+        file_exts = (file_exts, )
+
+    if isinstance(input_, basestring):
+
+        # It is a path; return it!
+        if os.path.exists(input_):
+            if not file_exts or os.path.splitext(input_)[1] in file_exts:
+                return input_, None
+
+    fields = list(fields or ()) + ['sg_path']
+    publish = parse_as_publish(sgfs, input_, fields=fields, **kwargs)
+    if 'sg_path' not in publish:
+        publish.fetch(fields) # Grab them all, but only if we don't have our one.
+    path = publish['sg_path']
+    if not path:
+        raise ValueError('publish %s has no path' % publish['id'])
+    if file_exts and os.path.splitext(path)[1] not in file_exts:
+        raise ValueError('publish %d path\'s ext not %s' % (publish['id'], '/'.join(sorted(file_exts))))
+    return path, publish
+
+
+
 def add_publisher_arguments(parser, short_flags=True, prefix=None, skip=frozenset()):
 
     if prefix and not isinstance(prefix, basestring):
