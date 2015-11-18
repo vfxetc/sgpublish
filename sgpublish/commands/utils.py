@@ -4,7 +4,7 @@ from sgfs.commands.utils import parse_spec
 from sgfs import SGFS
 
 
-def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, fields=()):
+def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, fields=(), sort_key=None):
     """Given input from a user, find a publish.
 
     When searching, we simply return the latest publish found."""
@@ -25,7 +25,7 @@ def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, 
         raise ValueError('no publish from input')
 
     base_filters = []
-    base_fields = list(fields or ()) + ['created_at']
+    base_fields = list(fields or ()) + (['sg_version', 'created_at'] if sort_key is None else [])
     if publish_types:
         base_filters.append(('sg_type', 'in', tuple(publish_types)))
 
@@ -43,7 +43,10 @@ def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, 
     if not publishes:
         raise ValueError('no publishes on {type} {id}'.format(**input_))
 
-    publishes.sort(key=lambda p: p['created_at'])
+    if sort_key is None:
+        sort_key = lambda p: (p['sg_version'], p['created_at'])
+    publishes.sort(key=sort_key)
+
     return publishes[-1]
 
 
@@ -52,12 +55,12 @@ def parse_as_path_or_publish(sgfs, input_, file_exts=None, fields=(), **kwargs):
     if isinstance(file_exts, basestring):
         file_exts = (file_exts, )
 
-    if isinstance(input_, basestring):
-
-        # It is a path; return it!
-        if os.path.exists(input_):
-            if not file_exts or os.path.splitext(input_)[1] in file_exts:
-                return input_, None
+    # Check the path (which is either the input string, or the magic __path__
+    # field that may be set by parse_spec).
+    potential_path = input_ if isinstance(input_, basestring) else input_.get('__path__')
+    if potential_path and os.path.exists(potential_path):
+        if not file_exts or os.path.splitext(input_)[1] in file_exts:
+            return potential_path, None
 
     fields = list(fields or ()) + ['sg_path']
     publish = parse_as_publish(sgfs, input_, fields=fields, **kwargs)
