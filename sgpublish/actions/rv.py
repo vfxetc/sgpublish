@@ -12,7 +12,7 @@ def rvlink(cmd):
     if sys.platform == 'darwin':
         subprocess.check_call(['open', url])
     else:
-        sunprocess.check_call(['xdg-open', url])
+        subprocess.check_call(['xdg-open', url])
 
 
 def run_play(entity_type, selected_ids, **kwargs):
