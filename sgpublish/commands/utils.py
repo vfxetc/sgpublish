@@ -4,10 +4,17 @@ from sgfs.commands.utils import parse_spec
 from sgfs import SGFS
 
 
-def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, fields=(), sort_key=None):
+def default_sort_key(publish):
+    return publish['sg_version'], publish['created_at']
+
+
+def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, filters=(), fields=(), sort_key=None):
     """Given input from a user, find a publish.
 
-    When searching, we simply return the latest publish found."""
+    When searching, publishes are sorted by with ``sort_key``, and the last
+    one is taken. The default ``sort_key`` sorts by ``(version, created_at)``.
+    
+    """
 
     if isinstance(input_, basestring):
         input_ = parse_spec(sgfs, input_)
@@ -24,7 +31,7 @@ def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, 
     if not search_for_publish:
         raise ValueError('no publish from input')
 
-    base_filters = []
+    base_filters = list(filters or ())
     base_fields = list(fields or ()) + (['sg_version', 'created_at'] if sort_key is None else [])
     if publish_types:
         base_filters.append(('sg_type', 'in', tuple(publish_types)))
@@ -43,10 +50,7 @@ def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, 
     if not publishes:
         raise ValueError('no publishes on {type} {id}'.format(**input_))
 
-    if sort_key is None:
-        sort_key = lambda p: (p['sg_version'], p['created_at'])
-    publishes.sort(key=sort_key)
-
+    publishes.sort(key=sort_key or default_sort_key)
     return publishes[-1]
 
 
