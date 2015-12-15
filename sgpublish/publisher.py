@@ -162,8 +162,9 @@ class Publisher(object):
         # Get everything into the right type before sending it to Shotgun.
         self._normalize_attributes()
         
-        # Prep for async processes.
-        executor = concurrent.futures.ThreadPoolExecutor(3)
+        # Prep for async processes. We can do a lot of "frivolous" Shotgun
+        # queries at the same time since we must do at least one.
+        executor = concurrent.futures.ThreadPoolExecutor(8)
         futures = []
 
         # Figure out the version number (async).
@@ -171,6 +172,10 @@ class Publisher(object):
             futures.append(executor.submit(self._set_automatic_version))
         else:
             self._version = int(version)
+
+        # Grab all data on the link (assuming that is all that is used when
+        # creating publish templates).
+        futures.append(executor.submit(self.link.fetch_core))
 
         # Create the review version stub (async).
         if self._review_version_fields is not None:
