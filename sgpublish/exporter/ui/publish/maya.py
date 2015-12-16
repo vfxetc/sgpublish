@@ -179,7 +179,23 @@ class Widget(Base):
         # Open a viewer, and wait for it to close.
         sound_path = get_sound_for_frames(path) or get_current_sound()
         frame_rate = cmds.playbackOptions(q=True, framesPerSecond=True)
+
+        # Resolve globs into ####.
+        if '*' in path:
+            prefix, postfix = path.split('*', 1)
+            paths = glob.glob(path)
+            pattern = '%s(.+?)(\d+)%s$' % (re.escape(prefix), re.escape(postfix))
+            for found in paths:
+                m = re.match(pattern, found)
+                if m:
+                    path = '%s%s%s%s' % (prefix, m.group(1), '#' * len(m.group(2)), postfix)
+                    break
+            else:
+                raise ValueError('cannot identify length of frame padding', paths[0])
+
+        # Replace #### with %04d for RV.
         rv_style_path = re.sub(r'(#+)', lambda m: '%0' + '%d' % len(m.group(1)) + 'd', path)
+
         cmd = ['rv', '[', rv_style_path, '-fps', str(frame_rate), ']']
         if sound_path:
             cmd.extend(['-over', '[', sound_path, ']'])
