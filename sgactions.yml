@@ -6,7 +6,7 @@
         heading: "RV"
         title: "Play in RV"
         icon: control-play-blue
-    entity_types: [PublishEvent]
+    entity_types: [PublishEvent, Version]
     selection_required: true
 
 -
