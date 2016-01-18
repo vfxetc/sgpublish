@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import shutil
+import re
 
 import concurrent.futures
 
@@ -124,6 +125,9 @@ class Publisher(object):
         self._link = self.sgfs.session.merge(link)
         self._name = str(name)
         self._parent = parent
+
+        if re.search(r'[^\w-]', self._name):
+            raise ValueError('name cannot have spaces or special characters', self._name)
 
         # Get information about the promotion for review.
         self._review_version_entity = None
