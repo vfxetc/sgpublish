@@ -59,33 +59,37 @@ def promote_publish(publish, **kwargs):
         fields['created_by'] = publish['created_by']
         version = sgfs.session.create('Version', fields)
     
-
+    futures = []
     with ThreadPoolExecutor(4) as executor:
         
         # Share thumbnails.
-        executor.submit(sgfs.session.share_thumbnail,
+        futures.append(executor.submit(sgfs.session.share_thumbnail,
             entities=[version.minimal],
             source_entity=publish.minimal,
-        )
+        ))
     
         # Set the status/version on the task.
-        executor.submit(sgfs.session.update,
+        futures.append(executor.submit(sgfs.session.update,
             'Task',
             publish['sg_link']['id'],
             {
                 'sg_status_list': 'rev',
                 'sg_latest_version': version,
             },
-        )
+        ))
     
         # Set the latest version on the entity.
         entity = publish['sg_link'].fetch('entity')
         if entity['type'] in ('Asset', 'Shot'):
-            executor.submit(sgfs.session.update,
+            futures.append(executor.submit(sgfs.session.update,
                 entity['type'],
                 entity['id'],
                 {'sg_latest_version': version},
-            )
+            ))
+
+        # Allow them to raise if they must.
+        for future in futures:
+            future.result()
     
     return version
 
