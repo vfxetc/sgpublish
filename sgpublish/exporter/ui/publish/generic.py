@@ -77,6 +77,7 @@ class Widget(QtGui.QWidget):
         
         basename = os.path.basename(exporter.filename_hint)
         basename = os.path.splitext(basename)[0]
+        basename = re.sub(r'[^\w-]+', '_', basename)
         self._basename = re.sub(r'_*[rv]\d+', '', basename)
         
         self._setup_ui()
