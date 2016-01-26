@@ -96,6 +96,6 @@ def run_play(entity_type, selected_ids, **kwargs):
     if chunks:
         # -l -> use lookahead cache
         # -play -> play immediately
-        rvlink(['-l', '-play'] + chunks)
+        rvlink(['-l'] + chunks)
     else:
         alert("We don't know how to play %s entities." % entity_type)
