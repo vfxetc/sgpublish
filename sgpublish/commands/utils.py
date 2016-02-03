@@ -63,7 +63,7 @@ def parse_as_path_or_publish(sgfs, input_, file_exts=None, fields=(), **kwargs):
     # field that may be set by parse_spec).
     potential_path = input_ if isinstance(input_, basestring) else input_.get('__path__')
     if potential_path and os.path.exists(potential_path):
-        if not file_exts or os.path.splitext(input_)[1] in file_exts:
+        if not file_exts or os.path.splitext(potential_path)[1] in file_exts:
             return potential_path, None
 
     fields = list(fields or ()) + ['sg_path']
