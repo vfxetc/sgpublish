@@ -13,7 +13,7 @@ def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, 
 
     When searching, publishes are sorted by with ``sort_key``, and the last
     one is taken. The default ``sort_key`` sorts by ``(version, created_at)``.
-    
+
     """
 
     if isinstance(input_, basestring):
@@ -21,7 +21,7 @@ def parse_as_publish(sgfs, input_, publish_types=None, search_for_publish=True, 
 
     if publish_types and isinstance(publish_types, basestring):
         publish_types = [publish_types]
-    
+
     if input_['type'] == 'PublishEvent':
         publish = input_
         if publish_types and publish.fetch('sg_type') not in publish_types:
@@ -59,15 +59,28 @@ def parse_as_path_or_publish(sgfs, input_, file_exts=None, fields=(), **kwargs):
     if isinstance(file_exts, basestring):
         file_exts = (file_exts, )
 
+    path = publish = None
+
     # Check the path (which is either the input string, or the magic __path__
     # field that may be set by parse_spec).
     potential_path = input_ if isinstance(input_, basestring) else input_.get('__path__')
     if potential_path and os.path.exists(potential_path):
         if not file_exts or os.path.splitext(potential_path)[1] in file_exts:
-            return potential_path, None
+            path = potential_path
 
+    # Also go looking for a publish that contains that path.
     fields = list(fields or ()) + ['sg_path']
-    publish = parse_as_publish(sgfs, input_, fields=fields, **kwargs)
+    try:
+        publish = parse_as_publish(sgfs, input_, fields=fields, **kwargs)
+    except ValueError:
+        if not path:
+            raise
+
+    # The user gave us a path which exists, return it with whatever publish we
+    # may have found.
+    if path:
+        return path, publish
+
     if 'sg_path' not in publish:
         publish.fetch(fields) # Grab them all, but only if we don't have our one.
     path = publish['sg_path']
@@ -179,6 +192,3 @@ def extract_publisher_kwargs(args, sgfs=None, delete=True):
         kwargs['template'] = parse_spec(sgfs, kwargs['template'], entity_types=['PublishEvent'])
 
     return kwargs
-
-
-
