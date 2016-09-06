@@ -1,7 +1,6 @@
 import re
 
-from PyQt4 import QtCore, QtGui
-Qt = QtCore.Qt
+from uitools.qt import Qt, QtCore, QtGui
 
 import sgpublish.exporter
 import sgpublish.exporter.ui.publish

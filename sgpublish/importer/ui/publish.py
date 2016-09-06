@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
-from PyQt4 import QtCore, QtGui
-Qt = QtCore.Qt
+from uitools.qt import Qt, QtCore, QtGui
 
 from sgfs.ui.picker import presets as picker_presets
 

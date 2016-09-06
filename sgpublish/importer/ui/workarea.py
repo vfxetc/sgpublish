@@ -1,6 +1,6 @@
 import os
 
-from PyQt4 import QtGui
+from uitools.qt import QtGui
 
 from sgfs.ui import product_select
 

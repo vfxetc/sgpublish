@@ -1,6 +1,6 @@
 import os
 
-from PyQt4 import QtGui
+from uitools.qt import QtGui
 
 import sgfs.ui.scene_name.widget as scene_name
 

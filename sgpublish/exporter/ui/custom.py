@@ -1,4 +1,4 @@
-from PyQt4 import QtGui
+from uitools.qt import QtGui
 
 from sgpublish.uiutils import vbox, hbox
 

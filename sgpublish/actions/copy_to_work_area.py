@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-from PyQt4 import QtGui
+from uitools.qt import QtGui
 
 # TODO: Get these out of the key_base!
 from ks.core.scene_name.core import SceneName

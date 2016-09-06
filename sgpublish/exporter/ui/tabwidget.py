@@ -1,4 +1,4 @@
-from PyQt4 import QtGui
+from uitools.qt import QtGui
 
 
 class Widget(QtGui.QTabWidget):
