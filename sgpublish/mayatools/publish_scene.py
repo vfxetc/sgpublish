@@ -15,8 +15,7 @@ import itertools
 
 from concurrent.futures import ThreadPoolExecutor
 
-from PyQt4 import QtCore, QtGui
-Qt = QtCore.Qt
+from uitools.qt import Qt, QtCore, QtGui
 
 from maya import cmds
 

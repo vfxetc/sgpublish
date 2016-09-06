@@ -9,8 +9,7 @@ import traceback
 import subprocess
 import datetime
 
-from PyQt4 import QtCore, QtGui
-Qt = QtCore.Qt
+from uitools.qt import Qt, QtCore, QtGui
 
 from sgfs import SGFS
 from sgactions.ticketui import ticket_ui_context
@@ -62,11 +61,11 @@ class TimeSpinner(QtGui.QSpinBox):
 class Widget(QtGui.QWidget):
     
     # Windows should hide on these.
-    beforeScreenshot = QtCore.pyqtSignal()
-    afterScreenshot = QtCore.pyqtSignal()
+    beforeScreenshot = QtCore.Signal()
+    afterScreenshot = QtCore.Signal()
     
     # Need a signal to communicate across threads.
-    loaded_publishes = QtCore.pyqtSignal(object, object)
+    loaded_publishes = QtCore.Signal(object, object)
     
     def __init__(self, exporter):
         super(Widget, self).__init__()

@@ -2,8 +2,7 @@ import functools
 import itertools
 import os
 
-from PyQt4 import QtCore, QtGui
-Qt = QtCore.Qt
+from uitools.qt import Qt, QtCore, QtGui
 
 from maya import cmds
 

@@ -11,8 +11,7 @@ import datetime
 import re
 import sys
 
-from PyQt4 import QtGui, QtCore
-Qt = QtCore.Qt
+from uitools.qt import Qt, QtCore, QtGui
 
 from maya import cmds
 
