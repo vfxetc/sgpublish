@@ -12,6 +12,7 @@ import re
 import sys
 
 from uitools.qt import Qt, QtCore, QtGui
+import siteconfig
 
 from maya import cmds
 
@@ -102,6 +103,9 @@ class Widget(Base):
         self._playblast.setFixedHeight(self._movie_path.sizeHint().height())
         self._playblast.setFixedWidth(self._playblast.sizeHint().width() + 2)
         
+        if not siteconfig.get_bool('FEATURE_SGPUBLISH_MOVIES', True):
+            self._playblast.setEnabled(False)
+
         self._viewer_msgbox = None
         self.viewerClosed.connect(self._on_viewer_closed)
     

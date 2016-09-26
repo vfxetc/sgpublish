@@ -10,6 +10,7 @@ import subprocess
 import datetime
 
 from uitools.qt import Qt, QtCore, QtGui
+import siteconfig
 
 from sgfs import SGFS
 from sgactions.ticketui import ticket_ui_context
@@ -149,6 +150,11 @@ class Widget(QtGui.QWidget):
         self._movie_browse.setFixedHeight(self._movie_path.sizeHint().height())
         self._movie_browse.setFixedWidth(self._movie_browse.sizeHint().width() + 2)
         
+        # Feature flag if you don't want to allow movie publishing.
+        if not siteconfig.get_bool('FEATURE_SGPUBLISH_MOVIES', True):
+            self._movie_path.setEnabled(False)
+            self._movie_browse.setEnabled(False)
+
         self._promote_checkbox = QtGui.QCheckBox("Promote to 'Version' for review")
         # self.layout().addWidget(self._promote_checkbox)
         
