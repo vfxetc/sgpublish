@@ -7,13 +7,11 @@ from uitools.qt import Qt, QtCore, QtGui
 
 from maya import cmds
 
-# TODO: Get these out of the key_base!
-from ks.core.scene_name.core import SceneName
-from ks.core.scene_name.widget import SceneNameWidget
-
+from sgfs import SGFS
 from sgfs.ui.picker import presets as picker_presets
 from sgfs.ui.picker.nodes.base import Node as BaseNode
-from sgfs import SGFS
+from sgfs.ui.scene_name.core import SceneName
+from sgfs.ui.scene_name.widget import SceneNameWidget
 
 from sgpublish import utils
 
@@ -136,7 +134,6 @@ class Dialog(QtGui.QDialog):
 
         self._namer = SceneNameWidget(dict(workspace=workspace))
         self.layout().addWidget(self._namer)
-        
 
         button_layout = QtGui.QHBoxLayout()
         self.layout().addLayout(button_layout)
