@@ -173,7 +173,13 @@ class Dialog(QtGui.QDialog):
         
             publish = node.state.get('PublishEvent')
             
-            self._namer._namer.detail = publish['code']
+            # TODO: Strip this with the scene_name(r)'s tools, when they exist.
+            detail = publish['code']
+            step_name = publish.fetch('link.Task.step.Step.short_name')
+            if detail.lower().startswith(step_name.lower()):
+                detail = detail[len(step_name):].lstrip('_')
+
+            self._namer._namer.detail = detail
             self._namer._namer.extension = ext = os.path.splitext(publish['sg_path'])[1]
             
             basename = self._namer._namer.get_basename()
