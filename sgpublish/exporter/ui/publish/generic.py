@@ -58,6 +58,17 @@ class TimeSpinner(QtGui.QSpinBox):
             return QtGui.QValidator.Invalid, pos
     
 
+# TODO: replace with sgfs.scene_name sep strip
+def _strip_seps(x):
+    x = re.sub(r'^[.,_-]+', '', x)
+    x = re.sub(r'[.,_-]+$', '', x)
+    return x
+def _strip_prefix(name, prefix):
+    if name.lower().startswith(prefix.lower()):
+        name = name[len(prefix):]
+        name = _strip_seps(name)
+    return name
+
 
 class Widget(QtGui.QWidget):
     
@@ -78,8 +89,23 @@ class Widget(QtGui.QWidget):
         basename = os.path.basename(exporter.filename_hint)
         basename = os.path.splitext(basename)[0]
         basename = re.sub(r'[^\w-]+', '_', basename)
-        self._basename = re.sub(r'_*[rv]\d+', '', basename)
-        
+        basename = re.sub(r'_*[rv]\d+', '', basename)
+        basename = _strip_seps(basename)
+
+        # TODO: Strip entity_name and step_name with SGFS scene_name functions.
+        if self._exporter.workspace:
+            sgfs = SGFS()
+            tasks = sgfs.entities_from_path(self._exporter.workspace, ['Task'])
+            if tasks:
+                task = tasks[0]
+                entity, step = task.fetch(('entity', 'step'))
+                if entity:
+                    basename = _strip_prefix(basename, entity.fetch('code'))
+                if step:
+                    basename = _strip_prefix(basename, step.fetch('short_name'))
+
+        self._basename = basename
+
         self._setup_ui()
         
         # First screenshot.
