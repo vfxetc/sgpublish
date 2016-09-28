@@ -213,8 +213,9 @@ class Dialog(QtGui.QDialog):
         
         dst_path = self._namer._namer.get_path()
 
-        subprocess.call(['cp', src_path, dst_path])
-        subprocess.call(['chmod', 'a+w', dst_path])
+        # TODO: Do this with shutil
+        subprocess.check_call(['cp', src_path, dst_path])
+        subprocess.check_call(['chmod', 'a+w', dst_path])
 
         self.hide()
 
