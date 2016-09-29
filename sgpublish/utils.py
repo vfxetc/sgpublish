@@ -4,6 +4,7 @@ import re
 import re
 import glob
 from shutil import copy
+import subprocess
 
 
 def makedirs(path):
@@ -58,42 +59,38 @@ def make_quicktime(movie_paths, frames_path, audio_path=None, extended_data=None
     
     from uifutures.worker import set_progress, notify
 
-    from dailymaker import dailymaker
-    from dailymaker import utils as daily_utils
-    from dailymaker import presets
-
     if isinstance(movie_paths, basestring):
         movie_paths = [movie_paths]
     movie_path = movie_paths[0]
 
-    frame_sequence = daily_utils.parse_source_path(frames_path)
+    # Replace #### with %04d
+    frames_path = re.sub(r'(#+)', lambda m: '%%0%dd' % len(m.group(1)), frames_path)
 
-    qt = dailymaker.DailyMaker()
-    qt.image_sequence = frame_sequence
-    qt.source = frames_path
-    qt.dest = movie_path
-    qt.render_preview = False
-    qt.extended_data = extended_data
-
-    qt.set_preset(presets.find_preset(presets.get_default_preset()))
-
-    # Setup signal to the user.
-    if progress_callback is not None:
-        qt._progress_callback = progress_callback
-    else:
-        qt._progress_callback = lambda value, maximum, image: set_progress(
-            value, maximum, status = "Encoding %s" % os.path.basename(frame_sequence[value])
-        )
-
+    cmd = ['ffmpeg', '-i', frames_path]
     if audio_path:
-        qt.audio = audio_path
+        cmd.extend(['-i', audio_path])
+    cmd.extend([
+        '-c:v', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-profile:v', 'baseline',
+            '-crf', '22',
+            '-threads', '0'
+    ])
+    if audio_path:
+        cmd.extend([
+            '-c:a', 'pcm_s24le',
+        ])
+    cmd.extend([
+        movie_path
+    ])
 
-    # Process it.
-    qt.start()
-    
+    subprocess.check_call(cmd)
+    notify('Your QuickTime is ready.')
+    return
+
+    # Is this still a thing?
     for extra_path in movie_paths[1:]:
         set_progress(status="Copying to %s" % os.path.dirname(extra_path))
         copy(movie_path, extra_path)
 
-    notify('Your QuickTime is ready.')
 

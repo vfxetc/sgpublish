@@ -96,17 +96,14 @@ class Exporter(base.Exporter):
             
             movie_paths = []
 
-            # <task>/dailies/<date>/<name>_v<version>.mov
-            movie_paths.append(os.path.join(
-                publisher.sgfs.path_for_entity(publisher.link),
-                'dailies',
-                datetime.datetime.now().strftime('%y-%m-%d'), # 2-digit year
-                '%s_v%04d.mov' % (publisher.name, publisher.version),
-            ))
+            movie_paths.append(
+                publisher.add_file('%s,v%04d.mov' % (publisher.name, publisher.version), method='placeholder')
+            )
 
             # <project>/VFX_Dailies/<date>/<step>/<Version.id>_<name>_v<version>.mov
             review_version = publisher.review_version_entity
-            if review_version:
+            # TODO: Hook this up another way for WesternX
+            if False and review_version:
                 review_qt_path = os.path.join(
                     publisher.sgfs.path_for_entity(publisher.link.project()),
                     'VFX_Dailies',
@@ -151,10 +148,10 @@ class Exporter(base.Exporter):
             
             # Finally set the Shotgun attributes.
             publisher.movie_path = movie_paths[0]
-            publisher.movie_url = {
-                'url': 'http://keyweb' + movie_paths[0],
-                'name': os.path.basename(movie_paths[0]),
-            }
+            #publisher.movie_url = {
+            #    'url': 'http://keyweb' + movie_paths[0],
+            #    'name': os.path.basename(movie_paths[0]),
+            #}
             publisher.frames_path = None
     
     def fields_for_review_version(self, **kwargs):

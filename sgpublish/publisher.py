@@ -377,7 +377,7 @@ class Publisher(object):
             raise ValueError('the file already exists in the publish')
         dst_path = self.abspath(dst_name)
 
-        if method not in ('copy', 'move'):
+        if method not in ('copy', 'move', 'placeholder'):
             raise ValueError('bad add_file method %r' % method)
 
         if immediate:
@@ -397,6 +397,8 @@ class Publisher(object):
             shutil.copy(src_path, dst_path)
         elif method == 'move':
             shutil.move(src_path, dst_path)
+        elif method == 'placeholder':
+            pass # Just a placeholder.
         else:
             raise RuntimeError('bad add_file method %r' % method)
 
