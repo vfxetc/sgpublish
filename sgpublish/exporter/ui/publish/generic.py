@@ -98,11 +98,20 @@ class Widget(QtGui.QWidget):
             tasks = sgfs.entities_from_path(self._exporter.workspace, ['Task'])
             if tasks:
                 task = tasks[0]
-                entity, step = task.fetch(('entity', 'step'))
+                task_name, entity, step = task.fetch(('content', 'entity', 'step'))
                 if entity:
                     basename = _strip_prefix(basename, entity.fetch('code'))
                 if step:
                     basename = _strip_prefix(basename, step.fetch('short_name'))
+
+                # Default to something reasonable.
+                basename = (
+                    basename or
+                    task_name or 
+                    (step.get('short_name') if step else None) or
+                    (entity.get('code') if entity else None) or
+                    ''
+                )
 
         self._basename = basename
 
