@@ -55,20 +55,23 @@ def strip_pardir(path):
     return re.sub(_pardir_pattern, '', path)
 
 
-def make_quicktime(movie_paths, frames_path, frames_per_second, audio_path=None, extended_data=None, progress_callback=None):
+def make_quicktime(movie_path, frames_path, audio_path=None, framerate=None):
     
     from uifutures.worker import set_progress, notify
-
-    if isinstance(movie_paths, basestring):
-        movie_paths = [movie_paths]
-    movie_path = movie_paths[0]
 
     # Replace #### with %04d
     frames_path = re.sub(r'(#+)', lambda m: '%%0%dd' % len(m.group(1)), frames_path)
 
-    cmd = ['ffmpeg', '-framerate', frames_per_second, '-i', frames_path]
+    cmd = ['ffmpeg']
+
+    if framerate:
+        cmd.extend(['-framerate', str(framerate)])
+
+    cmd.extend(['-i', frames_path])
+
     if audio_path:
         cmd.extend(['-i', audio_path])
+
     cmd.extend([
         '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
@@ -80,17 +83,11 @@ def make_quicktime(movie_paths, frames_path, frames_per_second, audio_path=None,
         cmd.extend([
             '-c:a', 'pcm_s24le',
         ])
+    
     cmd.extend([
         movie_path
     ])
 
     subprocess.check_call(cmd)
     notify('Your QuickTime is ready.')
-    return
-
-    # Is this still a thing?
-    for extra_path in movie_paths[1:]:
-        set_progress(status="Copying to %s" % os.path.dirname(extra_path))
-        copy(movie_path, extra_path)
-
 

@@ -82,7 +82,7 @@ class Exporter(base.Exporter):
         # Add a bunch of metadata.
         file_info = [x.encode('utf8') for x in cmds.fileInfo(q=True)]
         file_info = dict(zip(file_info[0::2], file_info[1::2]))
-        frames_per_second = str(units.get_fps())
+
         publisher.metadata['maya'] = {
             'file_info': file_info,
             'max_time': cmds.playbackOptions(query=True, maxTime=True),
@@ -95,64 +95,45 @@ class Exporter(base.Exporter):
         # Playblasts should be converted into frames.
         if publisher.frames_path and not publisher.movie_path:
             
-            movie_paths = []
+            movie_path = publisher.add_file('%s,v%04d.mov' % (publisher.name, publisher.version), method='placeholder')
+        
+            # Assert the directory exists.
+            dir_ = os.path.dirname(movie_path)
+            if not os.path.exists(dir_):
+                os.makedirs(dir_)
 
-            movie_paths.append(
-                publisher.add_file('%s,v%04d.mov' % (publisher.name, publisher.version), method='placeholder')
-            )
-
-            # <project>/VFX_Dailies/<date>/<step>/<Version.id>_<name>_v<version>.mov
-            review_version = publisher.review_version_entity
-            # TODO: Hook this up another way for WesternX
-            if False and review_version:
-                review_qt_path = os.path.join(
-                    publisher.sgfs.path_for_entity(publisher.link.project()),
-                    'VFX_Dailies',
-                    datetime.datetime.now().strftime('%Y-%m-%d'),
-                    publisher.link.fetch('step.Step.code') or 'Unknown',
-                    '%d_%s_v%04d.mov' % (review_version['id'], publisher.name, publisher.version),
-                )
-                movie_paths.append(review_qt_path)
-            
-            for i, path in enumerate(movie_paths):
-
-                dir_ = os.path.dirname(path)
-                if not os.path.exists(dir_):
-                    os.makedirs(dir_)
-
-                # Make the path unique.
-                if os.path.exists(path):
-                    base, ext = os.path.splitext(path)
-                    for copy_i in itertools.count(1):
-                        path = '%s_%04d%s' % (base, copy_i, ext)
-                        if not os.path.exists(path):
-                            movie_paths[i] = path
-                            break
+            # Make the path unique.
+            if os.path.exists(movie_path):
+                base, ext = os.path.splitext(movie_path)
+                for copy_i in itertools.count(1):
+                    movie_path = '%s_%04d%s' % (base, copy_i, ext)
+                    if not os.path.exists(movie_path):
+                        break
 
             
             sound_path = get_sound_for_frames(publisher.frames_path) or get_current_sound()
             
             # Spawn the job.
-            print '# Scheduling make_quicktime to %r from %r' % (movie_paths, publisher.frames_path)
+            print '# Scheduling make_quicktime to %r from %r' % (movie_path, publisher.frames_path)
             if sound_path:
                 print '# Sound from %r' % sound_path
             
+
             with uifutures.Executor() as executor:
                 
                 executor.submit_ext(
                     func=utils.make_quicktime,
-                    args = (movie_paths, publisher.frames_path, frames_per_second, sound_path, {'maya_workspace':self.workspace,
-                                                                             'min_time': cmds.playbackOptions(query = True, minTime = True),
-                                                                             'max_time': cmds.playbackOptions(query = True, maxTime = True), }),
+                    kwargs={
+                        'movie_path': movie_path,
+                        'frames_path': publisher.frames_path,
+                        'audio_path': sound_path,
+                        'framerate': units.get_fps(),
+                    },
                     name="QuickTime \"%s_v%04d\"" % (publisher.name, publisher.version),
                 )
             
             # Finally set the Shotgun attributes.
-            publisher.movie_path = movie_paths[0]
-            #publisher.movie_url = {
-            #    'url': 'http://keyweb' + movie_paths[0],
-            #    'name': os.path.basename(movie_paths[0]),
-            #}
+            publisher.movie_path = movie_path
             publisher.frames_path = None
     
     def fields_for_review_version(self, **kwargs):
