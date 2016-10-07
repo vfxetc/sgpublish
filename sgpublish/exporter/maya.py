@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import itertools
 import os
 import datetime
-
+from mayatools.units import core as units
 from maya import cmds, mel
 
 import uifutures
@@ -82,6 +82,7 @@ class Exporter(base.Exporter):
         # Add a bunch of metadata.
         file_info = [x.encode('utf8') for x in cmds.fileInfo(q=True)]
         file_info = dict(zip(file_info[0::2], file_info[1::2]))
+        frames_per_second = str(units.get_fps())
         publisher.metadata['maya'] = {
             'file_info': file_info,
             'max_time': cmds.playbackOptions(query=True, maxTime=True),
@@ -140,7 +141,7 @@ class Exporter(base.Exporter):
                 
                 executor.submit_ext(
                     func=utils.make_quicktime,
-                    args = (movie_paths, publisher.frames_path, sound_path, {'maya_workspace':self.workspace,
+                    args = (movie_paths, publisher.frames_path, frames_per_second, sound_path, {'maya_workspace':self.workspace,
                                                                              'min_time': cmds.playbackOptions(query = True, minTime = True),
                                                                              'max_time': cmds.playbackOptions(query = True, maxTime = True), }),
                     name="QuickTime \"%s_v%04d\"" % (publisher.name, publisher.version),

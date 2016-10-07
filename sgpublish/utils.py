@@ -55,7 +55,7 @@ def strip_pardir(path):
     return re.sub(_pardir_pattern, '', path)
 
 
-def make_quicktime(movie_paths, frames_path, audio_path=None, extended_data=None, progress_callback=None):
+def make_quicktime(movie_paths, frames_path, frames_per_second, audio_path=None, extended_data=None, progress_callback=None):
     
     from uifutures.worker import set_progress, notify
 
@@ -66,7 +66,7 @@ def make_quicktime(movie_paths, frames_path, audio_path=None, extended_data=None
     # Replace #### with %04d
     frames_path = re.sub(r'(#+)', lambda m: '%%0%dd' % len(m.group(1)), frames_path)
 
-    cmd = ['ffmpeg', '-i', frames_path]
+    cmd = ['ffmpeg', '-framerate', frames_per_second, '-i', frames_path]
     if audio_path:
         cmd.extend(['-i', audio_path])
     cmd.extend([

@@ -19,6 +19,7 @@ from maya import cmds
 import mayatools.playblast
 import mayatools.playblast.picker
 from mayatools.tickets import ticket_ui_context
+from mayatools.units import core as units 
 
 from sgpublish.exporter.ui.publish import Widget as Base
 from sgpublish import uiutils as ui_utils
@@ -181,7 +182,7 @@ class Widget(Base):
         
         # Open a viewer, and wait for it to close.
         sound_path = get_sound_for_frames(path) or get_current_sound()
-        frame_rate = cmds.playbackOptions(q=True, framesPerSecond=True)
+        frame_rate = str(units.get_fps())
 
         # Resolve globs into ####.
         if '*' in path:
