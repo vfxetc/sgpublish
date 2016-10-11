@@ -1,10 +1,10 @@
+from shutil import copy
 import errno
+import glob
 import os
 import re
-import re
-import glob
-from shutil import copy
 import subprocess
+import sys
 
 
 def makedirs(path):
@@ -55,14 +55,17 @@ def strip_pardir(path):
     return re.sub(_pardir_pattern, '', path)
 
 
-def make_quicktime(movie_path, frames_path, audio_path=None, framerate=None):
+def make_quicktime(movie_path, frames_path, audio_path=None, framerate=None, on_progress=None):
     
     from uifutures.worker import set_progress, notify
 
     # Replace #### with %04d
+    glob_path = re.sub(r'(#+|%.+?[sd])', '*', frames_path)
+    frame_count = len(glob.glob(glob_path))
+
     frames_path = re.sub(r'(#+)', lambda m: '%%0%dd' % len(m.group(1)), frames_path)
 
-    cmd = ['ffmpeg']
+    cmd = ['ffmpeg', '-y']
 
     if framerate:
         cmd.extend(['-framerate', str(framerate)])
@@ -88,6 +91,14 @@ def make_quicktime(movie_path, frames_path, audio_path=None, framerate=None):
         movie_path
     ])
 
-    subprocess.check_call(cmd)
+    proc = subprocess.Popen(cmd, stderr=subprocess.PIPE)
+    for line in proc.stderr:
+        if on_progress:
+            m = re.match(r'frame=\s*(\d+)', line)
+            if m:
+                on_progress(int(m.group(1)), frame_count)
+        sys.stderr.write(line)
+        sys.stderr.flush()
+
     notify('Your QuickTime is ready.')
 

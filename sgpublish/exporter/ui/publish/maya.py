@@ -150,7 +150,8 @@ class Widget(Base):
         maxTime = cmds.playbackOptions(q=True, maxTime=True)
         
         scene_name = os.path.splitext(os.path.basename(cmds.file(q=True, sceneName=True)))[0]
-        
+        scene_name = scene_name or 'untitled'
+
         # Assume that we won't be calling this multiple times within 1 second.
         directory = os.path.join(
             '/var/tmp/playblasts',

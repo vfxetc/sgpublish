@@ -3,6 +3,8 @@ from __future__ import absolute_import
 import itertools
 import os
 import datetime
+import threading
+
 from mayatools.units import core as units
 from maya import cmds, mel
 
@@ -118,20 +120,29 @@ class Exporter(base.Exporter):
             if sound_path:
                 print '# Sound from %r' % sound_path
             
+            # FIXME: We are having a hard time with uifutures at Mark Media.
+            if False:
+                with uifutures.Executor() as executor:
+                    executor.submit_ext(
+                        func=utils.make_quicktime,
+                        kwargs={
+                            'movie_path': movie_path,
+                            'frames_path': publisher.frames_path,
+                            'audio_path': sound_path,
+                            'framerate': units.get_fps(),
+                        },
+                        name="QuickTime \"%s_v%04d\"" % (publisher.name, publisher.version),
+                    )
+            else:
+                # TODO: Add a progress bar.
+                thread = threading.Thread(target=utils.make_quicktime, kwargs={
+                    'movie_path': movie_path,
+                    'frames_path': publisher.frames_path,
+                    'audio_path': sound_path,
+                    'framerate': units.get_fps(),
+                })
+                thread.start()
 
-            with uifutures.Executor() as executor:
-                
-                executor.submit_ext(
-                    func=utils.make_quicktime,
-                    kwargs={
-                        'movie_path': movie_path,
-                        'frames_path': publisher.frames_path,
-                        'audio_path': sound_path,
-                        'framerate': units.get_fps(),
-                    },
-                    name="QuickTime \"%s_v%04d\"" % (publisher.name, publisher.version),
-                )
-            
             # Finally set the Shotgun attributes.
             publisher.movie_path = movie_path
             publisher.frames_path = None
