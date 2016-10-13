@@ -104,15 +104,23 @@ class Dialog(QtGui.QDialog):
         self._publish_widget.beforeScreenshot.connect(self.hide)
         self._publish_widget.afterScreenshot.connect(self.show)
         
-        button = QtGui.QPushButton('Publish')
-        button.clicked.connect(self._on_submit)
-        self.layout().addLayout(ui_utils.vbox(button))
-        
+        publish_button = QtGui.QPushButton('Publish')
+        cancel_button = QtGui.QPushButton('Cancel')
+        publish_button.clicked.connect(self._on_submit)
+        cancel_button.clicked.connect(self._on_cancel)
+        hbox = QtGui.QHBoxLayout()
+        hbox.addWidget(publish_button)
+        hbox.addWidget(cancel_button)
+        self.layout().addLayout(ui_utils.vbox(hbox))
+
+
         self._publish_widget.beforePlayblast.connect(self._before_playblast)
         self._publish_widget.afterPlayblast.connect(self._after_playblast)
         
         self._msgbox = None
     
+    def _on_cancel(self):
+        self.close()
     def _before_playblast(self):
         self.hide()
     
