@@ -95,10 +95,9 @@ class Dialog(QtGui.QDialog):
         self.setWindowTitle('Scene Publisher')
         self.setLayout(QtGui.QVBoxLayout())
 
-        hbox = QtGui.QHBoxLayout()
+        hbox = QtGui.QHBoxLayout()      
 
         self._exporter = SceneExporter()
-
         
         self._publish_widget = PublishWidget(self._exporter)
         self._publish_widget.layout().setContentsMargins(0, 0, 0, 0)
@@ -114,10 +113,8 @@ class Dialog(QtGui.QDialog):
         cancel_button = QtGui.QPushButton('Cancel')
         cancel_button.clicked.connect(self._on_cancel)
         hbox.addWidget(cancel_button)
-
+      
         self.layout().addLayout(ui_utils.vbox(hbox))
-
-
         self._publish_widget.beforePlayblast.connect(self._before_playblast)
         self._publish_widget.afterPlayblast.connect(self._after_playblast)
         
