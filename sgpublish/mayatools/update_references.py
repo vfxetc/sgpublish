@@ -213,11 +213,16 @@ class Dialog(QtGui.QDialog):
         button_layout = QtGui.QHBoxLayout()
         button_layout.addStretch()
         
+        #TO-DO: Finish implementing Update all
         self._update_button = QtGui.QPushButton('Update All')
-        button_layout.addWidget(self._update_button)
+        #button_layout.addWidget(self._update_button)
         
         self._close_button = QtGui.QPushButton('Close')
+        self._close_button.clicked.connect(self._on_close_button)
         button_layout.addWidget(self._close_button)
+
+        self.layout().addLayout(button_layout)
+
         
     
     def _populate_references(self):
@@ -256,6 +261,9 @@ class Dialog(QtGui.QDialog):
         if not self._did_check:
             self._did_check = True
             maya_check.start_background_check()
+
+    def _on_close_button(self):
+        self.close()
     
 
 def __before_reload__():
