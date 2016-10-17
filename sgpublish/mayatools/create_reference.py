@@ -128,6 +128,7 @@ class Dialog(QtGui.QDialog):
         self.layout().addWidget(self._picker)
         
         button_layout = QtGui.QHBoxLayout()
+        bottom_button_layout = QtGui.QHBoxLayout()
         
         self._namespace_field = QtGui.QLineEdit()
         if self._custom_namespace:
@@ -136,15 +137,19 @@ class Dialog(QtGui.QDialog):
         
         button_layout.addStretch()
         self.layout().addLayout(button_layout)
+        
         self._button = QtGui.QPushButton("Create Reference")
         self._button.setEnabled(False)
         self._button.clicked.connect(self._on_create_reference)
-        button_layout.addWidget(self._button)
-
+        
         self._cancel_button = QtGui.QPushButton("Cancel")
         self._cancel_button.clicked.connect(self._on_cancel)
-        button_layout.addWidget(self._cancel_button)
-        
+        bottom_button_layout.addWidget(self._cancel_button)
+        bottom_button_layout.addStretch()
+        bottom_button_layout.addWidget(self._button)
+      
+        self.layout().addLayout(bottom_button_layout)
+
         self._preview = Preview()
         self._picker.setPreviewWidget(self._preview)
         self._picker.updatePreviewWidget.connect(self._on_update_preview)
