@@ -54,7 +54,14 @@ def get_current_sound():
         cmds.warning('No sound node.')
         return
     
-    return cmds.sound(sound_node, query=True, file=True)
+    sound_path = cmds.sound(sound_node, query=True, file=True)
+
+    # Assert that it exists. It is a bit overkill to check it here, but all
+    # we are doing is dumping it into the Maya log, so it isn't a big deal.
+    if sound_path and os.path.exists(sound_path):
+        return sound_path
+    else:
+        cmds.warning('Sound file (via node %s) at %s does not exist.' % (sound_node, sound_path))
 
 
 class Exporter(base.Exporter):
