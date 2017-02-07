@@ -17,7 +17,8 @@ setup(
     entry_points={
         'console_scripts': [
             'sgpublish-create = sgpublish.commands.create:main', # Deprecated.
-            'publish_generic = sgpublish.commands.create:main',
+            'publish_generic = sgpublish.commands.create:main', # Deprecated.
+            'publish-generic = sgpublish.commands.create:main',
         ],
     },
     

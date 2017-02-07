@@ -25,8 +25,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     # Pull the name/link from the first file by default.
-    args.link = args.link or args.files[0]
-    args.name = args.name or basename(args.files[0])
+    args.publisher_link = args.publisher_link or args.files[0]
+    args.publisher_name = args.publisher_name or os.path.splitext(os.path.basename(args.files[0]))[0]
 
     kwargs = extract_publisher_kwargs(args)
 
