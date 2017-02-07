@@ -7,12 +7,13 @@ from ..publisher import Publisher
 from ..utils import basename
 from .utils import add_publisher_arguments, extract_publisher_kwargs
 
+
 def main(argv=None):
 
     parser = argparse.ArgumentParser()
     add_publisher_arguments(parser)
 
-    input_group = parser.add_argument_group('inputs', '''
+    input_group = parser.add_argument_group('Input files', '''
         The files to add to the publish, and how to structure them in the publish.
     ''')
     input_group.add_argument('-C', '--relative-to', metavar='PATH',
@@ -22,10 +23,12 @@ def main(argv=None):
         help='the files to include in the publish')
 
     args = parser.parse_args(argv)
-    kwargs = extract_publisher_kwargs(args)
 
-    if 'name' not in kwargs:
-        kwargs['name'] = basename(args.files[0])
+    # Pull the name/link from the first file by default.
+    args.link = args.link or args.files[0]
+    args.name = args.name or basename(args.files[0])
+
+    kwargs = extract_publisher_kwargs(args)
 
     with Publisher(**kwargs) as publisher:
         publisher.add_files(args.files, args.relative_to)

@@ -54,6 +54,7 @@ Contents
     
     publisher
     io
+    versions
     utils
 
 
