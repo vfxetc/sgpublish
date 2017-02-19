@@ -38,12 +38,16 @@ def standard_setup():
 
 
     # Setup background check every 5 minutes.
-    from uitools.qt import QtCore
-    import sgpublish.check.maya
-    __mayatools_usersetup__['timer'] = timer = QtCore.QTimer()
-    timer.timeout.connect(sgpublish.check.maya.start_background_check)
-    timer.setInterval(1000 * 60 * 5) # Every 5 minutes.
-    timer.start()
+    try:
+        from uitools.qt import QtCore
+        import sgpublish.check.maya
+    except ImportError as e:
+        print '[sgpublish] Missing dependency:', e
+    else:
+        __mayatools_usersetup__['timer'] = timer = QtCore.QTimer()
+        timer.timeout.connect(sgpublish.check.maya.start_background_check)
+        timer.setInterval(1000 * 60 * 5) # Every 5 minutes.
+        timer.start()
 
 
 # Block from running the production userSetup if the dev one already ran.
