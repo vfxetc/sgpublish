@@ -75,7 +75,14 @@ class Preview(QtGui.QWidget):
     def update(self, entity):
         
         # TODO: Do this async.
-        by, at, desc = entity.fetch(('created_by.HumanUser.name', 'created_at', 'description'), force=True)
+        # We're also priming the sg_default_reference_namespace (assuming
+        # it exists).
+        by, at, desc, _ = entity.fetch((
+            'created_by.HumanUser.name',
+            'created_at',
+            'description',
+            'sg_link.Task.entity.Asset.sg_default_reference_namespace',
+        ), force=True)
         self._created_by_label.setText(str(by))
         self._created_at_label.setText(str(at.strftime('%y-%m-%d %I:%M %p')))
         self._description_label.setText(str(desc))
@@ -178,7 +185,7 @@ class Dialog(QtGui.QDialog):
         ):
 
             # Find a name which doesn't clash.
-            namespace = publish['code']
+            namespace = publish.get('sg_link.Task.entity.Asset.sg_default_reference_namespace') or publish['code']
             existing = self._existing_namespaces()
             if namespace in existing:
                 for i in itertools.count(1):
