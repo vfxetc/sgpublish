@@ -1,5 +1,6 @@
 from subprocess import check_call
 import datetime
+import errno
 import itertools
 import json
 import logging
@@ -42,7 +43,7 @@ class Publisher(object):
     This object is used as a context manager such that it will cleanup
     the first stage of the commit if there is an exception::
 
-        >>> with sgpublish.Publisher(link=task, type="maya_scene", code=name,
+        >>> with sgpublish.Publisher(link=task, type="maya_scene", name=name,
         ...         ) as publisher:
         ...     publisher.add_file(scene_file)
 
@@ -56,7 +57,7 @@ class Publisher(object):
     :param str type: A code for the type of publish. This is significant to the
         user and publish handlers.
 
-    :param str code: A name for the stream of publishes.
+    :param str name: A name for the stream of publishes.
 
     :param path: The directory to create for the publish. If ``None``, this will
         be generated via the ``"{type}_publish"`` :class:`sgfs.Template
@@ -74,10 +75,15 @@ class Publisher(object):
         provided.
     :type sgfs: :class:`~sgfs.sgfs.SGFS` or None
 
+    :param bool makedirs: If the publish directory should be created. Helpful to
+        disable if you want to use the logic to determine a publish yourself.
+
+    :param bool defer_entities: Wait to create anything on Shotgun until later?
+
     """
 
     def __init__(self, link=None, type=None, name=None, version=None, parent=None,
-        directory=None, sgfs=None, template=None, **kwargs
+        directory=None, sgfs=None, template=None, makedirs=True, defer_entities=False, **kwargs
     ):
 
         if not sgfs:
@@ -184,10 +190,6 @@ class Publisher(object):
         # creating publish templates).
         futures.append(executor.submit(self.link.fetch_core))
 
-        # Create the review version stub (async).
-        if self._review_version_fields is not None:
-            futures.append(executor.submit(self._get_review_version))
-
         # First stage of the publish: create an "empty" PublishEvent.
         initial_data = {
             'code': self.name,
@@ -205,13 +207,16 @@ class Publisher(object):
             'sg_version': 0, # Signifies that this is "empty".
         }
         initial_data.update(self.extra_fields)
-        try:
-            self.entity = self.sgfs.session.create('PublishEvent', initial_data)
-        except ShotgunFault:
-            if not self.link.exists():
-                raise RuntimeError('%s %d (%r) has been retired' % (link['type'], link['id'], link.get('name')))
-            else:
-                raise
+        initial_data['type'] = 'PublishEvent'
+        initial_data['id'] = 0
+
+        # HACK! Although sgsession supports this.
+        self.entity = self.sgfs.session.merge(initial_data)
+
+        if not defer_entities:
+            future = self.assert_entities(_executor=executor)
+            if future is not None:
+                futures.append(future)
 
         # Lets have our async processes catch up.
         for future in futures:
@@ -219,41 +224,91 @@ class Publisher(object):
 
         # Manually forced directory.
         if directory is not None:
-            self._directory_supplied = True
 
-            # Make it if it doesn't already exist, but don't care if it does.
+            self._directory_supplied = True
             self._directory = os.path.abspath(directory)
+
+            # Make the directory so that tools which want to manually copy files
+            # don't have to.
+            if makedirs:
+                utils.makedirs(self._directory)
 
         else:
             self._directory_supplied = False
-
-            # Find a unique name using the template result as a base.
-            base_path = self.sgfs.path_from_template(link, '%s_publish' % type, dict(
-                publish=self, # For b/c.
-                publisher=self,
-                PublishEvent=self.entity,
-                self=self.entity, # To mimick Shotgun templates.
-            ))
-            unique_iter = ('%s_%d' % (base_path, i) for i in itertools.count(1))
-            for path in itertools.chain([base_path], unique_iter):
-                try:
-                    os.makedirs(path)
-                except OSError as e:
-                    if e.errno != 17: # File exists
-                        raise
-                else:
-                    self._directory = path
-                    break
-
-        # Make the directory so that tools which want to manually copy files
-        # don't have to.
-        utils.makedirs(self._directory)
+            self._directory = self.pick_unique_directory(makedirs=makedirs)
 
         # If the directory is tagged with existing entities, then we cannot
         # proceed. This allows one to retire a publish and then overwrite it.
         tags = self.sgfs.get_directory_entity_tags(self._directory)
         if any(tag['entity'].exists() for tag in tags):
             raise ValueError('directory is already tagged: %r' % self._directory)
+
+    def iter_potential_directories(self, allow_existing=False):
+        """Find unique directories using the template result as a base.
+
+        :param bool allow_existing: Yield directories which already exist.
+
+        """
+
+        base_path = self.sgfs.path_from_template(self.link, '%s_publish' % type, dict(
+            publish=self, # For b/c.
+            publisher=self,
+            PublishEvent=self.entity,
+            self=self.entity, # To mimick Shotgun templates.
+        ))
+
+        unique_iter = ('%s_%d' % (base_path, i) for i in itertools.count(1))
+
+        for path in itertools.chain([base_path], unique_iter):
+            if not allow_existing and os.path.exists(path):
+                continue
+            yield path
+
+    def pick_unique_directory(self, makedirs=True):
+        """Get a unique directory for the publish.
+
+        :param bool makedirs: Create the directory at the same time to avoid
+            race conditions.
+
+        """
+        for path in self.iter_potential_directories():
+            if makedirs:
+                try:
+                    os.makedirs(path)
+                except OSError as e:
+                    if e.errno != errno.EEXIST:
+                        raise
+                    continue
+            return path
+
+    def assert_entities(self, _extra=None, _executor=None):
+
+        # Create the review version stub (async).
+        future = None
+        if self._review_version_fields is not None and self._review_version_entity is None:
+            if _executor:
+                future = executor.submit(self._get_review_version)
+            else:
+                self._get_review_version()
+
+        if not self.entity['id']:
+
+            data = dict(self.entity)
+            data.pop('type')
+            data.pop('id')
+            if _extra:
+                data.update(_extra)
+
+            try:
+                self.entity = self.sgfs.session.create('PublishEvent', data)
+            except ShotgunFault:
+                if not self.link.exists():
+                    raise RuntimeError('%s %d (%r) has been retired' % (link['type'], link['id'], link.get('name')))
+                else:
+                    raise
+
+        return future
+
 
     def _set_automatic_version(self):
 
@@ -342,6 +397,11 @@ class Publisher(object):
     def directory(self):
         """The path into which all files must be placed."""
         return self._directory
+
+    @directory.setter
+    def directory(self, value):
+        self._directory_supplied = True
+        self._directory = os.path.abspath(value)
 
     def isabs(self, dst_name):
         """Is the given path absolute and within the publish directory?"""
@@ -465,10 +525,13 @@ class Publisher(object):
             }
             updates.update(self.extra_fields)
 
-            # Force the updated into the entity for the tag, since the Shotgun
-            # update may not complete by the time that we tag the directory
-            # or promote for review.
-            self.entity.update(updates)
+            if self.entity['id']:
+                # Force the updated into the entity for the tag, since the Shotgun
+                # update may not complete by the time that we tag the directory
+                # or promote for review.
+                self.entity.update(updates)
+            else:
+                self.assert_entities(_extra=updates)
 
             executor = concurrent.futures.ThreadPoolExecutor(4)
             futures = []
