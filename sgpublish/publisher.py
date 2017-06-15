@@ -287,7 +287,7 @@ class Publisher(object):
         future = None
         if self._review_version_fields is not None and self._review_version_entity is None:
             if _executor:
-                future = executor.submit(self._get_review_version)
+                future = _executor.submit(self._get_review_version)
             else:
                 self._get_review_version()
 
