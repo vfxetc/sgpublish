@@ -639,7 +639,7 @@ class Publisher(object):
     def _promote_for_review(self):
         if not self._committed:
             raise RuntimeError('can only promote AFTER publishing commits')
-        kwargs = dict(self._review_version_fields or {})
+        fields = dict(self._review_version_fields or {})
         if self._review_version_entity:
-            kwargs.setdefault('version_entity', self._review_version_entity)
-        return versions.promote_publish(self.entity, **kwargs)
+            fields.setdefault('__version_entity__', self._review_version_entity)
+        return versions.create_version_from_publish(self.entity, fields)
