@@ -3,10 +3,10 @@ import os
 import subprocess
 import sys
 
-from uitools.qt import Qt, QtCore, QtGui, qt2py
+from uitools.qt import Q, qt2py
 
 
-class ComboBox(QtGui.QComboBox):
+class ComboBox(Q.QComboBox):
     
     def itemData(self, *args):
         return qt2py(super(ComboBox, self).itemData(*args))
@@ -18,15 +18,15 @@ class ComboBox(QtGui.QComboBox):
 def _box(layout, *args):
     for arg in args:
         if isinstance(arg, basestring):
-            layout.addWidget(QtGui.QLabel(arg))
-        elif isinstance(arg, QtGui.QLayout):
+            layout.addWidget(Q.QLabel(arg))
+        elif isinstance(arg, Q.QLayout):
             layout.addLayout(arg)
         else:
             layout.addWidget(arg)
     return layout
 
-hbox = lambda *args, **kwargs: _box(QtGui.QHBoxLayout(**kwargs), *args)
-vbox = lambda *args, **kwargs: _box(QtGui.QVBoxLayout(**kwargs), *args)
+hbox = lambda *args, **kwargs: _box(Q.QHBoxLayout(**kwargs), *args)
+vbox = lambda *args, **kwargs: _box(Q.QVBoxLayout(**kwargs), *args)
 
 
 def call_open(x):
@@ -44,19 +44,19 @@ def announce_publish_success(
     open_shotgun=True,
 ):
 
-    msg = QtGui.QMessageBox()
+    msg = Q.QMessageBox()
     msg.setWindowTitle(title.format(publisher=publisher))
     msg.setText(message.format(publisher=publisher))
     
     if open_folder:
-        folder_button = msg.addButton("Open Folder", QtGui.QMessageBox.AcceptRole)
+        folder_button = msg.addButton("Open Folder", Q.QMessageBox.AcceptRole)
         folder_button.clicked.connect(functools.partial(call_open, publisher.directory))
     
     if open_shotgun:
-        shotgun_button = msg.addButton("Open Shotgun", QtGui.QMessageBox.AcceptRole)
+        shotgun_button = msg.addButton("Open Shotgun", Q.QMessageBox.AcceptRole)
         shotgun_button.clicked.connect(functools.partial(call_open, publisher.entity.url))
         
-    msg.addButton("Close", QtGui.QMessageBox.RejectRole)
+    msg.addButton("Close", Q.QMessageBox.RejectRole)
     
     msg.exec_()
 
@@ -74,17 +74,17 @@ def icon(name, size=None, as_icon=False):
         ))
 
         if os.path.exists(path):
-            icon = QtGui.QPixmap(path)
+            icon = Q.QPixmap(path)
         else:
             icon = None
     
         _icons_by_name[name] = icon
     
     if icon and size:
-        icon = icon.scaled(size, size, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+        icon = icon.scaled(size, size, Q.IgnoreAspectRatio, Q.SmoothTransformation)
     
     if icon and as_icon:
-        icon = QtGui.QIcon(icon)
+        icon = Q.QIcon(icon)
     
     return icon
 

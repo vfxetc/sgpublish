@@ -9,11 +9,11 @@ import traceback
 import subprocess
 import datetime
 
-from uitools.qt import Qt, QtCore, QtGui
+from uitools.qt import Q
 import siteconfig
 
 from sgfs import SGFS
-from sgactions.ticketui import ticket_ui_context
+#from sgactions.ticketui import ticket_ui_context
 
 from sgpublish.uiutils import ComboBox, hbox, vbox, icon
 
@@ -22,7 +22,7 @@ class PublishSafetyError(RuntimeError):
     pass
 
 
-class TimeSpinner(QtGui.QSpinBox):
+class TimeSpinner(Q.QSpinBox):
     
     def __init__(self):
         super(TimeSpinner, self).__init__(
@@ -53,9 +53,9 @@ class TimeSpinner(QtGui.QSpinBox):
     
     def validate(self, text, pos):
         if self.valueFromText(text) is not None:
-            return QtGui.QValidator.Acceptable, pos
+            return Q.QValidator.Acceptable, pos
         else:
-            return QtGui.QValidator.Invalid, pos
+            return Q.QValidator.Invalid, pos
     
 
 # TODO: replace with sgfs.scene_name sep strip
@@ -70,14 +70,14 @@ def _strip_prefix(name, prefix):
     return name
 
 
-class Widget(QtGui.QWidget):
+class Widget(Q.QWidget):
     
     # Windows should hide on these.
-    beforeScreenshot = QtCore.Signal()
-    afterScreenshot = QtCore.Signal()
+    beforeScreenshot = Q.Signal()
+    afterScreenshot = Q.Signal()
     
     # Need a signal to communicate across threads.
-    loaded_publishes = QtCore.Signal(object, object)
+    loaded_publishes = Q.Signal(object, object)
     
     def __init__(self, exporter):
         super(Widget, self).__init__()
@@ -122,7 +122,7 @@ class Widget(QtGui.QWidget):
     
     def _setup_ui(self):
         
-        self.setLayout(QtGui.QVBoxLayout())
+        self.setLayout(Q.QVBoxLayout())
         
         self._task_combo = ComboBox()
         self._task_combo.addItem('Loading...', {'loading': True})
@@ -133,18 +133,18 @@ class Widget(QtGui.QWidget):
         self._name_combo.addItem('Create new stream...', {'new': True})
         self._name_combo.currentIndexChanged.connect(self._name_changed)
         
-        self._tasksLabel = QtGui.QLabel("Task")
+        self._tasksLabel = Q.QLabel("Task")
         self.layout().addLayout(hbox(
             vbox(self._tasksLabel, self._task_combo),
             vbox("Publish Stream", self._name_combo),
             spacing=4
         ))
         
-        self._name_field = QtGui.QLineEdit(self._basename)
+        self._name_field = Q.QLineEdit(self._basename)
         self._name_field.setEnabled(False)
         self._name_field.editingFinished.connect(self._on_name_edited)
         
-        self._version_spinbox = QtGui.QSpinBox()
+        self._version_spinbox = Q.QSpinBox()
         self._version_spinbox.setMinimum(1)
         self._version_spinbox.setMaximum(9999)
         self._version_spinbox.valueChanged.connect(self._on_version_changed)
@@ -158,17 +158,17 @@ class Widget(QtGui.QWidget):
         
         # Get publish data in the background.
         self.loaded_publishes.connect(self._populate_existing_data)
-        self._thread = QtCore.QThread()
+        self._thread = Q.QThread()
         self._thread.run = self._fetch_existing_data
         self._thread.start()
         
-        self._description = QtGui.QTextEdit('')
+        self._description = Q.QTextEdit('')
         self._description.setMaximumHeight(100)
         
         self._thumbnail_path = None
-        self._thumbnail_canvas = QtGui.QLabel()
-        self._thumbnail_canvas.setFrameShadow(QtGui.QFrame.Sunken)
-        self._thumbnail_canvas.setFrameShape(QtGui.QFrame.Panel)
+        self._thumbnail_canvas = Q.QLabel()
+        self._thumbnail_canvas.setFrameShadow(Q.QFrame.Sunken)
+        self._thumbnail_canvas.setFrameShape(Q.QFrame.Panel)
         self._thumbnail_canvas.setToolTip("Click to specify part of screen.")
         self._thumbnail_canvas.mouseReleaseEvent = self.take_partial_screenshot
         
@@ -177,8 +177,8 @@ class Widget(QtGui.QWidget):
             vbox("Thumbnail", self._thumbnail_canvas),
         ))
         
-        self._movie_path = QtGui.QLineEdit()
-        self._movie_browse = QtGui.QPushButton(icon('silk/folder', size=12, as_icon=True), "Browse")
+        self._movie_path = Q.QLineEdit()
+        self._movie_browse = Q.QPushButton(icon('silk/folder', size=12, as_icon=True), "Browse")
         self._movie_browse.clicked.connect(self._on_movie_browse)
         self._movie_layout = hbox(self._movie_path, self._movie_browse)
         self.layout().addLayout(vbox("Path to Movie or Frames (to be copied to publish)", self._movie_layout, spacing=4))
@@ -190,16 +190,16 @@ class Widget(QtGui.QWidget):
             self._movie_path.setEnabled(False)
             self._movie_browse.setEnabled(False)
 
-        self._promote_checkbox = QtGui.QCheckBox("Promote to 'Version' for review")
+        self._promote_checkbox = Q.QCheckBox("Promote to 'Version' for review")
         # self.layout().addWidget(self._promote_checkbox)
         
         self._timelog_spinbox = TimeSpinner()
-        add_hour = QtGui.QPushButton("+1 Hour")
+        add_hour = Q.QPushButton("+1 Hour")
         add_hour.setFixedHeight(self._timelog_spinbox.sizeHint().height())
         @add_hour.clicked.connect
         def on_add_hour():
             self._timelog_spinbox.setValue(self._timelog_spinbox.value() + 60)
-        add_day = QtGui.QPushButton("+1 Day")
+        add_day = Q.QPushButton("+1 Day")
         add_day.setFixedHeight(self._timelog_spinbox.sizeHint().height())
         @add_day.clicked.connect
         def on_add_day():
@@ -316,14 +316,14 @@ class Widget(QtGui.QWidget):
     def _on_version_changed(self, new_value):
         data = self._name_combo.itemData(self._name_combo.currentIndex())
         if data.get('publish') and new_value != data['publish']['sg_version'] + 1 and not self._version_warning_issued:
-            res = QtGui.QMessageBox.warning(None,
+            res = Q.QMessageBox.warning(None,
                 "Manual Versions?",
                 "Are you sure you want to change the version?\n"
                 "The next one has already been selected for you...",
-                QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel,
-                QtGui.QMessageBox.Cancel
+                Q.QMessageBox.Ok | Q.QMessageBox.Cancel,
+                Q.QMessageBox.Cancel
             )
-            if res & QtGui.QMessageBox.Cancel:
+            if res & Q.QMessageBox.Cancel:
                 self._version_spinbox.setValue(data['publish']['sg_version'] + 1)
                 return
             self._version_warning_issued = True
@@ -332,7 +332,7 @@ class Widget(QtGui.QWidget):
         
         existing = str(self._movie_path.text())
         
-        dialog = QtGui.QFileDialog(None, "Select Movie or First Frame")
+        dialog = Q.QFileDialog(None, "Select Movie or First Frame")
         dialog.setFilter('Movie or Frame (*.mov *.exr *.tif *.tiff *.jpg *.jpeg)')
         dialog.setFileMode(dialog.ExistingFile)
         dialog.setDirectory(os.path.dirname(existing) if existing else os.getcwd())
@@ -349,7 +349,7 @@ class Widget(QtGui.QWidget):
     def setFrames(self, path):
         self._movie_path.setText(path)
         if path:
-            self._promote_checkbox.setCheckState(Qt.Checked)
+            self._promote_checkbox.setCheckState(Q.Checked)
         
     def take_full_screenshot(self):
         pass
@@ -373,7 +373,7 @@ class Widget(QtGui.QWidget):
     
     def setThumbnail(self, path):
         self._thumbnail_path = path
-        pixmap = QtGui.QPixmap(path).scaled(200, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        pixmap = Q.QPixmap(path).scaled(200, 100, Q.KeepAspectRatio, Q.SmoothTransformation)
         self._thumbnail_canvas.setPixmap(pixmap)
         self._thumbnail_canvas.setFixedSize(pixmap.size())
     
@@ -417,7 +417,7 @@ class Widget(QtGui.QWidget):
         if existing_name is None and (task['id'], new_name) in self._existing_streams:
             print 'XXX', task['id'], repr(existing_name), repr(new_name)
             print self._existing_streams
-            QtGui.QMessageBox.critical(self,
+            Q.QMessageBox.critical(self,
                 "Name Collision",
                 "You cannot create a new stream with the same name as an"
                 " existing one. Please select the existing stream or enter a"
@@ -428,7 +428,7 @@ class Widget(QtGui.QWidget):
         
         # Promoting to version without a movie.
         if self._promote_checkbox.isChecked() and not (self.frames_path() or self.movie_path()):
-            QtGui.QMessageBox.critical(self,
+            Q.QMessageBox.critical(self,
                 "Review Version Without Movie",
                 "You cannot promote a publish for review without frames or a"
                 " movie.",
@@ -438,18 +438,20 @@ class Widget(QtGui.QWidget):
         
         # Promoting to version without a timelog.
         if self._promote_checkbox.isChecked() and not self._timelog_spinbox.value():
-            res = QtGui.QMessageBox.warning(self,
+            res = Q.QMessageBox.warning(self,
                 "Version without Time Log",
                 "Are you sure that this version did not take you any time?",
-                QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
-                QtGui.QMessageBox.No,
+                Q.QMessageBox.Yes | Q.QMessageBox.No,
+                Q.QMessageBox.No,
             )
-            if res & QtGui.QMessageBox.No:
+            if res & Q.QMessageBox.No:
                 return False
         
         return True
         
     def export(self, **kwargs):
+        self._export(kwargs)
+        return
         with ticket_ui_context(pass_through=PublishSafetyError):
             return self._export(kwargs)
     
