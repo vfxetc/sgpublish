@@ -92,7 +92,9 @@ def create_versions_for_publish(publish, version_fields, sgfs=None):
 
     versions = []
 
-    with ThreadPoolExecutor(4) as executor:
+    # N.B. This used to be 4 threads, but it was causing collisions in
+    # Shotgun's servers.
+    with ThreadPoolExecutor(1) as executor:
 
         creation_futures = []
         for fields in version_fields:
