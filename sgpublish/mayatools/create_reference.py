@@ -2,7 +2,7 @@ import functools
 import itertools
 import os
 
-from uitools.qt import Qt, QtCore, QtGui
+from uitools.qt import Q
 
 from maya import cmds
 
@@ -34,10 +34,10 @@ class ScenePickerNode(BaseNode):
 
         for file_name in file_names:
             scene_name = os.path.splitext(file_name)[0]
-            yield scene_name, {Qt.DisplayRole: scene_name}, {'maya_scene': os.path.join(directory, file_name)}
+            yield scene_name, {Q.DisplayRole: scene_name}, {'maya_scene': os.path.join(directory, file_name)}
 
 
-class Preview(QtGui.QWidget):
+class Preview(Q.Widgets.Widget):
     
     def __init__(self):
         super(Preview, self).__init__()
@@ -47,27 +47,27 @@ class Preview(QtGui.QWidget):
     def _setup_ui(self):
         
         self.setMinimumWidth(200)
-        self.setLayout(QtGui.QVBoxLayout())
+        self.setLayout(Q.VBoxLayout())
         
-        self._thumbnail = QtGui.QLabel('')
-        self._thumbnail.setFrameShape(QtGui.QFrame.StyledPanel)
-        self._thumbnail.setFrameShadow(QtGui.QFrame.Raised)
+        self._thumbnail = Q.Label('')
+        self._thumbnail.setFrameShape(Q.Frame.StyledPanel)
+        self._thumbnail.setFrameShadow(Q.Frame.Raised)
         self.layout().addWidget(self._thumbnail)
         
-        form = QtGui.QFormLayout()
+        form = Q.FormLayout()
         self.layout().addLayout(form)
         
-        self._created_by_label = QtGui.QLabel()
+        self._created_by_label = Q.Label()
         form.addRow("<b>By:</b>", self._created_by_label)
 
-        self._created_at_label = QtGui.QLabel()
+        self._created_at_label = Q.Label()
         form.addRow("<b>At:</b>", self._created_at_label)
 
-        self._description_label = QtGui.QLabel()
+        self._description_label = Q.Label()
         self._description_label.setWordWrap(True)
         form.addRow("<b>Desc:</b>", self._description_label)
 
-        self._timeRangeLabel = QtGui.QLabel()
+        self._timeRangeLabel = Q.Label()
         form.addRow("<b>Frames:</b>", self._timeRangeLabel)
         
         self.layout().addStretch()
@@ -101,18 +101,18 @@ class Preview(QtGui.QWidget):
             thumbnail_path = tag.get('sgpublish', {}).get('thumbnail') if tags else None
             thumbnail_path = thumbnail_path or os.path.join(path, '.sgfs.thumbnail.jpg')
             if os.path.exists(thumbnail_path):
-                pixmap = QtGui.QPixmap(thumbnail_path)
+                pixmap = Q.Pixmap(thumbnail_path)
             else:
                 path = os.path.abspath(os.path.join(
                     __file__, '..', '..', '..', '..', 'art', 'no-thumbnail.png'
                 ))
-                pixmap = QtGui.QPixmap(path)
-            self._pixmaps[entity] = pixmap.scaledToWidth(165, Qt.SmoothTransformation)
+                pixmap = Q.Pixmap(path)
+            self._pixmaps[entity] = pixmap.scaledToWidth(165, Q.SmoothTransformation)
         
         self._thumbnail.setPixmap(self._pixmaps[entity])
         self._thumbnail.setFixedSize(self._pixmaps[entity].size())
 
-class Dialog(QtGui.QDialog):
+class Dialog(Q.Widgets.Dialog):
     
     def __init__(self, path=None, custom_namespace=True):
         super(Dialog, self).__init__()
@@ -124,7 +124,7 @@ class Dialog(QtGui.QDialog):
     def _setup_ui(self):
         self.setWindowTitle("Create Reference")
         
-        self.setLayout(QtGui.QVBoxLayout())
+        self.setLayout(Q.VBoxLayout())
         
         workspace = self._path or cmds.workspace(q=True, rootDirectory=True)
         self._model, self._picker = picker_presets.publishes_from_path(workspace)
@@ -134,22 +134,22 @@ class Dialog(QtGui.QDialog):
         self._picker.setColumnWidths([200] * 10)
         self.layout().addWidget(self._picker)
         
-        button_layout = QtGui.QHBoxLayout()
-        bottom_button_layout = QtGui.QHBoxLayout()
+        button_layout = Q.HBoxLayout()
+        bottom_button_layout = Q.HBoxLayout()
         
-        self._namespace_field = QtGui.QLineEdit()
+        self._namespace_field = Q.LineEdit()
         if self._custom_namespace:
-            button_layout.addWidget(QtGui.QLabel("Namespace:"))
+            button_layout.addWidget(Q.Label("Namespace:"))
             button_layout.addWidget(self._namespace_field)
         
         button_layout.addStretch()
         self.layout().addLayout(button_layout)
         
-        self._button = QtGui.QPushButton("Create Reference")
+        self._button = Q.PushButton("Create Reference")
         self._button.setEnabled(False)
         self._button.clicked.connect(self._on_create_reference)
         
-        self._cancel_button = QtGui.QPushButton("Cancel")
+        self._cancel_button = Q.PushButton("Cancel")
         self._cancel_button.clicked.connect(self._on_cancel)
         bottom_button_layout.addWidget(self._cancel_button)
         bottom_button_layout.addStretch()
@@ -217,7 +217,7 @@ class Dialog(QtGui.QDialog):
             # Make sure the namespace doesn't already exist
             namespace = str(self._namespace_field.text())
             if namespace in self._existing_namespaces():
-                QtGui.QMessageBox.critical(None, 'Namespace Collision',
+                Q.MessageBox.critical(None, 'Namespace Collision',
                     'There is already a reference in the scene with that namespace.'
                 )
                 return

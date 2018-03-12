@@ -3,7 +3,7 @@ import itertools
 import os
 import subprocess
 
-from uitools.qt import Qt, QtCore, QtGui
+from uitools.qt import Q
 
 from maya import cmds
 
@@ -39,10 +39,10 @@ class ScenePickerNode(BaseNode):
 
         for file_name in file_names:
             scene_name = os.path.splitext(file_name)[0]
-            yield scene_name, {Qt.DisplayRole: scene_name}, {'maya_scene': os.path.join(directory, file_name)}
+            yield scene_name, {Q.DisplayRole: scene_name}, {'maya_scene': os.path.join(directory, file_name)}
 
 
-class Preview(QtGui.QWidget):
+class Preview(Q.Widgets.Widget):
     
     def __init__(self):
         super(Preview, self).__init__()
@@ -52,27 +52,27 @@ class Preview(QtGui.QWidget):
     def _setup_ui(self):
         
         self.setMinimumWidth(200)
-        self.setLayout(QtGui.QVBoxLayout())
+        self.setLayout(Q.VBoxLayout())
         
-        self._thumbnail = QtGui.QLabel('')
-        self._thumbnail.setFrameShape(QtGui.QFrame.StyledPanel)
-        self._thumbnail.setFrameShadow(QtGui.QFrame.Raised)
+        self._thumbnail = Q.Label('')
+        self._thumbnail.setFrameShape(Q.Frame.StyledPanel)
+        self._thumbnail.setFrameShadow(Q.Frame.Raised)
         self.layout().addWidget(self._thumbnail)
         
-        form = QtGui.QFormLayout()
+        form = Q.FormLayout()
         self.layout().addLayout(form)
         
-        self._created_by_label = QtGui.QLabel()
+        self._created_by_label = Q.Label()
         form.addRow("<b>By:</b>", self._created_by_label)
 
-        self._created_at_label = QtGui.QLabel()
+        self._created_at_label = Q.Label()
         form.addRow("<b>At:</b>", self._created_at_label)
 
-        self._description_label = QtGui.QLabel()
+        self._description_label = Q.Label()
         self._description_label.setWordWrap(True)
         form.addRow("<b>Desc:</b>", self._description_label)
 
-        self._timeRangeLabel = QtGui.QLabel()
+        self._timeRangeLabel = Q.Label()
         form.addRow("<b>Frames:</b>", self._timeRangeLabel)
         
         self.layout().addStretch()
@@ -99,19 +99,19 @@ class Preview(QtGui.QWidget):
             thumbnail_path = tag.get('sgpublish', {}).get('thumbnail') if tags else None
             thumbnail_path = thumbnail_path or os.path.join(path, '.sgfs.thumbnail.jpg')
             if os.path.exists(thumbnail_path):
-                pixmap = QtGui.QPixmap(thumbnail_path)
+                pixmap = Q.Pixmap(thumbnail_path)
             else:
                 path = os.path.abspath(os.path.join(
                     __file__, '..', '..', '..', '..', 'art', 'no-thumbnail.png'
                 ))
-                pixmap = QtGui.QPixmap(path)
-            self._pixmaps[entity] = pixmap.scaledToWidth(165, Qt.SmoothTransformation)
+                pixmap = Q.Pixmap(path)
+            self._pixmaps[entity] = pixmap.scaledToWidth(165, Q.SmoothTransformation)
         
         self._thumbnail.setPixmap(self._pixmaps[entity])
         self._thumbnail.setFixedSize(self._pixmaps[entity].size())
 
 
-class Dialog(QtGui.QDialog):
+class Dialog(Q.Widgets.Dialog):
     
     def __init__(self, path=None):
         super(Dialog, self).__init__()
@@ -122,7 +122,7 @@ class Dialog(QtGui.QDialog):
     def _setup_ui(self):
         self.setWindowTitle("Copy Publish to Work Area")
         
-        self.setLayout(QtGui.QVBoxLayout())
+        self.setLayout(Q.VBoxLayout())
         
         self._workspace = workspace = self._path or cmds.workspace(q=True, rootDirectory=True)
         self._model, self._picker = picker_presets.publishes_from_path(workspace)
@@ -135,22 +135,22 @@ class Dialog(QtGui.QDialog):
         self._namer = SceneNameWidget(dict(workspace=workspace))
         self.layout().addWidget(self._namer)
 
-        button_layout = QtGui.QHBoxLayout()
+        button_layout = Q.HBoxLayout()
         self.layout().addLayout(button_layout)
         
 
-        self._cancel_button = QtGui.QPushButton("Cancel")
+        self._cancel_button = Q.PushButton("Cancel")
         self._cancel_button.clicked.connect(self._on_cancel_pressed)
         button_layout.addWidget(self._cancel_button)
 
         button_layout.addStretch()
 
-        self._copy_button = QtGui.QPushButton("Copy")
+        self._copy_button = Q.PushButton("Copy")
         self._copy_button.setEnabled(False)
         self._copy_button.clicked.connect(self._on_copy_pressed)
         button_layout.addWidget(self._copy_button)
 
-        self._open_button = QtGui.QPushButton("Copy and Open")
+        self._open_button = Q.PushButton("Copy and Open")
         self._open_button.setEnabled(False)
         self._open_button.clicked.connect(self._on_open_pressed)
         button_layout.addWidget(self._open_button)
@@ -224,15 +224,15 @@ class Dialog(QtGui.QDialog):
 
             # Make sure they want to proceed if there are changes to the file.
             if cmds.file(q=True, modified=True):
-                res = QtGui.QMessageBox.warning(self,
+                res = Q.MessageBox.warning(self,
                     "Unsaved Changes",
                     "Would you like to save your changes before opening the copied file?",
-                    QtGui.QMessageBox.Save | QtGui.QMessageBox.No | QtGui.QMessageBox.Cancel,
-                    QtGui.QMessageBox.Save
+                    Q.MessageBox.Save | Q.MessageBox.No | Q.MessageBox.Cancel,
+                    Q.MessageBox.Save
                 )
-                if res & QtGui.QMessageBox.Cancel:
+                if res & Q.MessageBox.Cancel:
                     return
-                if res & QtGui.QMessageBox.Save:
+                if res & Q.MessageBox.Save:
                     cmds.file(save=True)
 
             cmds.file(dst_path, open=True, force=True)

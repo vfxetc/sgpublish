@@ -2,7 +2,7 @@ import functools
 import itertools
 import os
 
-from uitools.qt import Qt, QtCore, QtGui
+from uitools.qt import Q
 
 from maya import cmds
 
@@ -17,7 +17,7 @@ from sgpublish.check import maya as maya_check
 from sgpublish.mayatools import create_reference
 
 
-class VersionedItem(QtGui.QTreeWidgetItem):
+class VersionedItem(Q.TreeWidgetItem):
 
     default_type = '-'
 
@@ -120,7 +120,7 @@ class ReferenceItem(VersionedItem):
 
         if self.publish:
 
-            self.combo = combo = QtGui.QComboBox()
+            self.combo = combo = Q.ComboBox()
             for i, sibling in enumerate(self.status.all):
                 combo.addItem('v%04d' % sibling['sg_version'], sibling)
                 if sibling['sg_version'] == self.publish['sg_version']:
@@ -129,7 +129,7 @@ class ReferenceItem(VersionedItem):
 
         else:
 
-            self.button = button = QtGui.QPushButton("Pick a Publish")
+            self.button = button = Q.PushButton("Pick a Publish")
             button.clicked.connect(self._pick_publish)
 
     def attach_to_tree(self, *args, **kwargs):
@@ -174,7 +174,7 @@ class ReferenceItem(VersionedItem):
             # print path
             new_data = self._viewFields()
             for i, v in enumerate(new_data):
-                self.setData(i, Qt.DisplayRole, v)
+                self.setData(i, Q.DisplayRole, v)
             self._setupGui()
             self.attach_to_tree()
 
@@ -190,7 +190,7 @@ class GeocacheItem(VersionedItem):
 
 
 
-class Dialog(QtGui.QDialog):
+class Dialog(Q.Widgets.Dialog):
     
     def __init__(self):
         super(Dialog, self).__init__()
@@ -202,22 +202,22 @@ class Dialog(QtGui.QDialog):
     def _setupGui(self):
         
         self.setWindowTitle("Update References")
-        self.setLayout(QtGui.QVBoxLayout())
+        self.setLayout(Q.VBoxLayout())
         
-        self._tree = QtGui.QTreeWidget()
+        self._tree = Q.TreeWidget()
         self._tree.setIndentation(0)
         self._tree.setItemsExpandable(False)
         self._tree.setHeaderLabels(["Name", "Entity", "Step", "Task", "Type", "Publish Name", "Version"])
         self.layout().addWidget(self._tree)
         
-        button_layout = QtGui.QHBoxLayout()
+        button_layout = Q.HBoxLayout()
         button_layout.addStretch()
         
         #TO-DO: Finish implementing Update all
-        self._update_button = QtGui.QPushButton('Update All')
+        self._update_button = Q.PushButton('Update All')
         #button_layout.addWidget(self._update_button)
         
-        self._close_button = QtGui.QPushButton('Close')
+        self._close_button = Q.PushButton('Close')
         self._close_button.clicked.connect(self._on_close_button)
         button_layout.addWidget(self._close_button)
 

@@ -36,7 +36,7 @@ class PlayblastPicker(Q.Widgets.Dialog):
     
     def _setup_ui(self):
         
-        self.setWindowModality(Qt.WindowModal)
+        self.setWindowModality(Q.WindowModal)
         self.setLayout(Q.VBoxLayout())
         
         self.layout().addWidget(Q.Label("Choose an existing playblast:"))
@@ -227,7 +227,7 @@ class Widget(Base):
             Q.MessageBox.Ignore,
             self
         )
-        msgbox.setWindowModality(Qt.WindowModal)
+        msgbox.setWindowModality(Q.WindowModal)
         msgbox.buttonClicked.connect(msgbox.hide)
         msgbox.show()
         
