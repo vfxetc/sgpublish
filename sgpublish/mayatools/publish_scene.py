@@ -15,7 +15,7 @@ import itertools
 
 from concurrent.futures import ThreadPoolExecutor
 
-from uitools.qt import Qt, QtCore, QtGui
+from uitools.qt import Q
 
 from maya import cmds
 
@@ -70,21 +70,21 @@ class PublishWidget(ui_publish.Widget):
         
         # Make sure they want to proceed if there are changes to the file.
         if cmds.file(q=True, modified=True):
-            res = QtGui.QMessageBox.warning(self,
+            res = Q.MessageBox.warning(self,
                 "Unsaved Changes",
                 "Would you like to save your changes before publishing this"
                 " file? The publish will have the changes either way.",
-                QtGui.QMessageBox.Save | QtGui.QMessageBox.No | QtGui.QMessageBox.Cancel,
-                QtGui.QMessageBox.Save
+                Q.MessageBox.Save | Q.MessageBox.No | Q.MessageBox.Cancel,
+                Q.MessageBox.Save
             )
-            if res & QtGui.QMessageBox.Cancel:
+            if res & Q.MessageBox.Cancel:
                 return False
-            if res & QtGui.QMessageBox.Save:
+            if res & Q.MessageBox.Save:
                 cmds.file(save=True)
         
         return True
     
-class Dialog(QtGui.QDialog):
+class Dialog(Q.Widgets.Dialog):
     
     def __init__(self, exceptions=None):
         super(Dialog, self).__init__()
@@ -93,9 +93,9 @@ class Dialog(QtGui.QDialog):
     def _setup_ui(self):
 
         self.setWindowTitle('Scene Publisher')
-        self.setLayout(QtGui.QVBoxLayout())
+        self.setLayout(Q.VBoxLayout())
 
-        hbox = QtGui.QHBoxLayout()      
+        hbox = Q.HBoxLayout()      
 
         self._exporter = SceneExporter()
         
@@ -106,12 +106,12 @@ class Dialog(QtGui.QDialog):
         self._publish_widget.beforeScreenshot.connect(self.hide)
         self._publish_widget.afterScreenshot.connect(self.show)
         
-        cancel_button = QtGui.QPushButton('Cancel')
+        cancel_button = Q.PushButton('Cancel')
         cancel_button.clicked.connect(self._on_cancel)
         hbox.addWidget(cancel_button)
         hbox.addStretch()
 
-        publish_button = QtGui.QPushButton('Publish')
+        publish_button = Q.PushButton('Publish')
         publish_button.clicked.connect(self._on_submit)
         hbox.addWidget(publish_button)
           
@@ -174,20 +174,20 @@ def run():
     # Be cautious if the scene was never saved
     filename = cmds.file(query=True, sceneName=True)
     if not filename:
-        res = QtGui.QMessageBox.warning(None, 'Unsaved Scene', 'This scene has not beed saved. Continue anyways?',
-            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
-            QtGui.QMessageBox.No
+        res = Q.MessageBox.warning(None, 'Unsaved Scene', 'This scene has not beed saved. Continue anyways?',
+            Q.MessageBox.Yes | Q.MessageBox.No,
+            Q.MessageBox.No
         )
-        if res & QtGui.QMessageBox.No:
+        if res & Q.MessageBox.No:
             return
     
     workspace = cmds.workspace(q=True, rootDirectory=True)
     if filename and not filename.startswith(workspace):
-        res = QtGui.QMessageBox.warning(None, 'Mismatched Workspace', 'This scene is not from the current workspace. Continue anyways?',
-            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
-            QtGui.QMessageBox.No
+        res = Q.MessageBox.warning(None, 'Mismatched Workspace', 'This scene is not from the current workspace. Continue anyways?',
+            Q.MessageBox.Yes | Q.MessageBox.No,
+            Q.MessageBox.No
         )
-        if res & QtGui.QMessageBox.No:
+        if res & Q.MessageBox.No:
             return
     
     dialog = Dialog()
