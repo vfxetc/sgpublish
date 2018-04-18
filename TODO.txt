@@ -1,9 +1,13 @@
 
+- Does it still make sense to renamed failed publishes? It would break anything
+  that is in them. This should be communicated via statuses.
+
+---
+
 - Remove the source_publishes attribute.
 
 - Various importers should highlight tasks which have publishes that the
   importer would pull in.
-
 
 - Do we need to force the playblast to open for those which are selected
   from the old playblast manager?
