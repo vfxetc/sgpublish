@@ -253,7 +253,7 @@ class Publisher(object):
 
         """
 
-        base_path = self.sgfs.path_from_template(self.link, '%s_publish' % type, dict(
+        base_path = self.sgfs.path_from_template(self.link, '%s_publish' % self.type, dict(
             publish=self, # For b/c.
             publisher=self,
             PublishEvent=self.entity,
