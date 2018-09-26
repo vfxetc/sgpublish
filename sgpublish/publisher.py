@@ -303,7 +303,7 @@ class Publisher(object):
                 self.entity = self.sgfs.session.create('PublishEvent', data)
             except ShotgunFault:
                 if not self.link.exists():
-                    raise RuntimeError('%s %d (%r) has been retired' % (link['type'], link['id'], link.get('name')))
+                    raise RuntimeError('%s %d (%r) has been retired' % (self.link['type'], self.link['id'], self.link.get('name')))
                 else:
                     raise
 
