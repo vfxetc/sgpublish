@@ -150,11 +150,15 @@ class Publisher(object):
         # Files to copy on commit; (src_path, dst_path)
         self._files = []
 
+        self.lock_permissions = True
+
         # Set attributes from kwargs.
         for name in (
             'created_by',
             'description',
+            'extra_fields',
             'frames_path',
+            'lock_permissions',
             'movie_path',
             'movie_url',
             'path',
@@ -162,7 +166,6 @@ class Publisher(object):
             'source_publishes',
             'thumbnail_path',
             'trigger_event',
-            'extra_fields',
         ):
             setattr(self, name, kwargs.pop(name, None))
 
@@ -250,7 +253,7 @@ class Publisher(object):
 
         """
 
-        base_path = self.sgfs.path_from_template(self.link, '%s_publish' % type, dict(
+        base_path = self.sgfs.path_from_template(self.link, '%s_publish' % self.type, dict(
             publish=self, # For b/c.
             publisher=self,
             PublishEvent=self.entity,
@@ -568,8 +571,9 @@ class Publisher(object):
 
             # Set permissions. I would like to own it by root, but we need root
             # to do that. We also leave the directory writable, but sticky.
-            check_call(['chmod', '-R', 'a=rX', self._directory])
-            check_call(['chmod', 'a+t,u+w', self._directory])
+            if self.lock_permissions:
+                check_call(['chmod', '-R', 'a=rX', self._directory])
+                check_call(['chmod', 'a+t,u+w', self._directory])
 
             # Wait for the Shotgun updates.
             for future in futures:
