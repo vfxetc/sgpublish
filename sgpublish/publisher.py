@@ -134,8 +134,9 @@ class Publisher(object):
         self._name = str(name)
         self._parent = parent
 
-        if re.search(r'[^\w\.,-]', self._name):
-            raise ValueError('name cannot have spaces or special characters', self._name)
+        invalid = re.sub(r'[\w\.,:;?&%=/-]', '', self._name)
+        if invalid:
+            raise ValueError('Publish name has invalid characters {!r}.'.format(''.join(sorted(set(invalid)))))
 
         # Get information about the promotion for review.
         self._review_version_entity = None
