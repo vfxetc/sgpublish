@@ -1,7 +1,7 @@
-from uitools.qt import QtGui
+from uitools.qt import Q
 
 
-class Widget(QtGui.QTabWidget):
+class Widget(Q.TabWidget):
     
     """Slight extension to the standard QTabWidget which does two things:
     
