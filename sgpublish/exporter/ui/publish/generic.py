@@ -266,7 +266,7 @@ class Widget(Q.QWidget):
                 if publish['id'] in history:
                     select = t_i, name
 
-            self._task_combo.addItem('%s - %s' % task.fetch(('step.Step.short_name', 'content')), {
+            self._task_combo.addItem('{!r} ({})'.format(*task.fetch(('content', 'step.Step.code'))), {
                 'task': task,
                 'publishes': name_to_publish,
             })

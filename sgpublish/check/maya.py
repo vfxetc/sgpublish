@@ -7,7 +7,7 @@ import time
 from maya import cmds
 
 import mayatools.shelf
-from mayatools.geocache import utils as geocache_utils
+# from mayatools.geocache import utils as geocache_utils
 from uitools.threads import defer_to_main_thread, call_in_main_thread
 
 from .core import check_paths
@@ -21,8 +21,8 @@ def start_background_check(*args):
     defer_to_main_thread(_update_buttons, None)
 
     references = call_in_main_thread(cmds.file, q=True, reference=True)
-    geocaches = call_in_main_thread(geocache_utils.get_existing_cache_mappings).keys()
-    threading.Thread(target=_background_check, args=[references + geocaches]).start()
+    # geocaches = call_in_main_thread(geocache_utils.get_existing_cache_mappings).keys()
+    threading.Thread(target=_background_check, args=[references]).start()
 
 
 def _background_check(references):

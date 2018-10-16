@@ -8,7 +8,7 @@ import threading
 from mayatools.units import core as units
 from maya import cmds, mel
 
-import uifutures
+# import uifutures
 
 from . import base
 from sgpublish import utils

@@ -9,7 +9,7 @@ from maya import cmds
 from sgfs import SGFS
 import mayatools.shelf
 from mayatools.tickets import ticket_ui_context
-from mayatools.geocache import utils as geocache_utils
+# from mayatools.geocache import utils as geocache_utils
 
 from sgpublish import uiutils as ui_utils
 from sgpublish import check
@@ -241,13 +241,13 @@ class Dialog(Q.Widgets.Dialog):
             self._tree.addTopLevelItem(item)
             item.attach_to_tree(self._tree)
 
-        geocaches = geocache_utils.get_existing_cache_mappings().keys()
-        geocache_statuses = check.check_paths(geocaches, only_published=True)
-        for geocache in geocache_statuses:
+        # geocaches = geocache_utils.get_existing_cache_mappings().keys()
+        # geocache_statuses = check.check_paths(geocaches, only_published=True)
+        # for geocache in geocache_statuses:
 
-            item = GeocacheItem(sgfs, geocache)
-            self._tree.addTopLevelItem(item)
-            item.attach_to_tree(self._tree)
+        #     item = GeocacheItem(sgfs, geocache)
+        #     self._tree.addTopLevelItem(item)
+        #     item.attach_to_tree(self._tree)
 
         for i in range(7):
             self._tree.resizeColumnToContents(i)
@@ -261,11 +261,11 @@ class Dialog(Q.Widgets.Dialog):
         hint.setWidth(total + 50)
         return hint
 
-    def closeEvent(self, e):
+    def xcloseEvent(self, e):
         super(Dialog, self).closeEvent(e)
         if not self._did_check:
             self._did_check = True
-            maya_check.start_background_check()
+            #maya_check.start_background_check()
 
     def _on_close_button(self):
         self.close()
