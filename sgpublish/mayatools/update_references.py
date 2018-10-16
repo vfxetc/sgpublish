@@ -170,12 +170,17 @@ class ReferenceItem(VersionedItem):
                 options='v=0',
             )
             self.status = check.check_paths([path])[0]
-            # print self.status.used['sg_path']
-            # print path
+            self.publish = self.status.used
             new_data = self._viewFields()
             for i, v in enumerate(new_data):
                 self.setData(i, Q.DisplayRole, v)
+
+            # This is dangerous to call a second time for some reason.
+            # On Mike's home machine, I used to not set self.publish above,
+            # which would overwrite the button, and for some reason
+            # segfault when the dialog was closed.
             self._setupGui()
+
             self.attach_to_tree()
 
 
